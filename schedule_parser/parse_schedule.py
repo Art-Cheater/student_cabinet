@@ -4,6 +4,8 @@ import re
 import sys
 from openpyxl import load_workbook
 
+from schedule_schema import apply_schedule_schema
+
 
 # =====================================
 # Пути
@@ -33,6 +35,7 @@ if not os.path.exists(FILE_NAME):
 # Подключение БД
 # =====================================
 conn = sqlite3.connect(DB_PATH)
+apply_schedule_schema(conn)
 cur = conn.cursor()
 
 

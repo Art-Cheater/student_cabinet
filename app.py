@@ -266,6 +266,19 @@ def init_user_db():
     # Совместимость со старыми тестами/импортами.
     init_students_db()
     init_content_db()
+    init_schedule_db()
+
+
+def init_schedule_db():
+    """Таблицы расписания в schedule.db (на новом сервере файла может не быть)."""
+    from schedule_parser.schedule_schema import apply_schedule_schema
+
+    conn = sqlite3.connect(SCHEDULE_DB)
+    try:
+        apply_schedule_schema(conn)
+    finally:
+        conn.close()
+
 
 def get_students_db():
     conn = sqlite3.connect(STUDENTS_DB)
@@ -671,6 +684,7 @@ def _load_cached_news():
 # Инициализируем БД и применяем миграции к существующим.
 init_students_db()
 init_content_db()
+init_schedule_db()
 
 @app.route('/')
 def index():
