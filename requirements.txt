@@ -1,6 +1,6 @@
-Flask==2.3.3
-openpyxl==3.1.2
-qrcode==7.4.2
-Pillow==10.0.0
+# Python 3.11+
+Flask==3.0.3
+Werkzeug==3.0.6
+bcrypt==4.2.1
+openpyxl==3.1.5
 requests==2.32.3
-bcrypt==4.1.2

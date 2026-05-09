@@ -47,11 +47,16 @@ conn.commit()
 # =====================================
 # helpers
 # =====================================
+ALLOWED_NAME_TABLES = {"groups", "teachers", "classrooms"}
+
+
 def get_or_create(table, value):
     if not value:
         return None
 
     value = value.strip()
+    if table not in ALLOWED_NAME_TABLES:
+        raise ValueError(f"Недопустимое имя таблицы: {table}")
 
     cur.execute(f"SELECT id FROM {table} WHERE name=?", (value,))
     row = cur.fetchone()

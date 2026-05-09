@@ -60,6 +60,9 @@ VYATSU_DORMS = [
     {'name': 'Общежитие №7', 'address': 'ул. Ленина, 198/5', 'phone': '(8332) 35-64-00', 'image_url': 'https://www.vyatsu.ru/uploads/image/1710/1obschezhitie2_(1).jpg', 'lat': 58.5672059, 'lon': 49.6881641},
     {'name': 'Общежитие №8', 'address': 'ул. Свободы, 133', 'phone': '(8332) 37-37-40', 'image_url': 'https://www.vyatsu.ru/uploads/image/1710/8obschezhitie2.jpg', 'lat': 58.5904838, 'lon': 49.6770740},
 ]
+
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+os.makedirs(PHOTO_UPLOADS_DIR, exist_ok=True)
 VYATSU_BUILDINGS = [
     {'name': 'Корпус №1', 'address': 'ул. Московская, д. 36', 'phone': '(8332) 70-82-67', 'image_url': 'https://www.vyatsu.ru/uploads/image/2411/img_9401.jpg', 'lat': 58.6032080, 'lon': 49.6454819},
     {'name': 'Корпус №2', 'address': 'ул. Московская, д. 39', 'phone': '(8332) 70-82-27', 'image_url': 'https://www.vyatsu.ru/uploads/image/2411/img_9369.jpg', 'lat': 58.6032080, 'lon': 49.6454819},

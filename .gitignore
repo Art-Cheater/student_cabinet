@@ -4,3 +4,12 @@ __pycache__/
 *.db
 static/photos/
 schedule_parser/uploads/
+private_storage/
+venv/
+.venv/
+env/
+.env
+.env.*
+*.sqlite
+*.sqlite3
+*.log
