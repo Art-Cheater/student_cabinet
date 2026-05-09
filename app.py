@@ -1130,4 +1130,8 @@ def appointment():
     return render_template('appointment.html')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Локально: PORT не задан — 5000. На Render и др. хостингах: PORT задаёт платформа.
+    # Слушать нужно 0.0.0.0, иначе внешний трафик до приложения не доходит.
+    port = int(os.environ.get('PORT', '5000'))
+    debug = os.environ.get('FLASK_DEBUG', '').lower() in ('1', 'true', 'yes')
+    app.run(host='0.0.0.0', port=port, debug=debug)
