@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный кабинет студента ВятГУ</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <div class="logo">
+                <a href="/">ВятГУ</a>
+            </div>
+            <div class="nav-links">
+                <div class="nav-main-links">
+                    <a href="/" class="{% if request.path == '/' %}active{% endif %}">Главная</a>
+                    {% if session.user_id %}
+                        <a href="/dashboard" class="{% if request.path == '/dashboard' %}active{% endif %}">Кабинет</a>
+                        <a href="/schedule" class="{% if request.path == '/schedule' %}active{% endif %}">Расписание</a>
+                        <a href="/appointment" class="{% if request.path == '/appointment' %}active{% endif %}">Запись</a>
+                    {% else %}
+                        <a href="/login" class="{% if request.path == '/login' %}active{% endif %}">Вход</a>
+                    {% endif %}
+                    <a href="/news" class="{% if request.path == '/news' %}active{% endif %}">Новости</a>
+                    <a href="/map" class="{% if request.path == '/map' %}active{% endif %}">Карта</a>
+                    <a href="/faq" class="{% if request.path == '/faq' %}active{% endif %}">Вопросы</a>
+                    <a href="/admin" class="{% if request.path.startswith('/admin') %}active{% endif %}">Админ</a>
+                </div>
+                {% if session.user_id %}
+                    <div class="nav-actions">
+                        <a href="/logout" class="logout-link">Выход</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for message in messages %}
+                        <div class="flash">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </div>
+    
+    <footer>
+        <p>© 2026 Вятский государственный университет | Личный кабинет студента</p>
+    </footer>
+</body>
+</html>

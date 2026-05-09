@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard">
+    <h1>Добро пожаловать, {{ user.user_name }}!</h1>
+    
+    <div class="dashboard-cards">
+        <div class="card">
+            <div class="card-icon">📅</div>
+            <h3>Расписание</h3>
+            <p>Группа: {{ user.group }}</p>
+            <a href="/schedule" class="btn btn-secondary">Посмотреть →</a>
+        </div>
+        
+        <div class="card">
+            <div class="card-icon">🎫</div>
+            <h3>Студенческий билет</h3>
+            <p>Данные, QR-код и фото для предъявления</p>
+            <a href="/student_card" class="btn btn-secondary">Открыть →</a>
+        </div>
+        
+        <div class="card">
+            <div class="card-icon">📝</div>
+            <h3>Запись к преподавателю</h3>
+            <p>Онлайн-запись на консультацию</p>
+            <a href="/appointment" class="btn btn-secondary">Записаться →</a>
+        </div>
+        
+        <div class="card">
+            <div class="card-icon">❓</div>
+            <h3>Помощь</h3>
+            <p>Ответы на частые вопросы</p>
+            <a href="/faq" class="btn btn-secondary">Читать →</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>Карта и контакты ВятГУ</h1>
+    <p>Общежития и корпуса с фото, картой и расстоянием от вашего местоположения.</p>
+</div>
+
+<div class="map-layout">
+    <div class="map-panel">
+        <div class="map-toolbar">
+            <div class="map-filters">
+                <button class="map-filter active" data-type="all" type="button">Все</button>
+                <button class="map-filter" data-type="dorm" type="button">Общежития</button>
+                <button class="map-filter" data-type="building" type="button">Корпуса</button>
+            </div>
+            <button class="map-locate-btn" id="locateMeBtn" type="button">Моё местоположение</button>
+        </div>
+        <div id="vyatsuMap"></div>
+        <p id="mapStatus" class="hint">Загружаем точки на карте...</p>
+    </div>
+
+    <div class="map-list-panel">
+        <div class="map-section-header">
+            <h2>Общежития</h2>
+            <a href="{{ dorms_source_url }}" target="_blank" rel="noopener noreferrer">Источник</a>
+        </div>
+        <div class="location-grid compact-grid">
+            {% for item in dorms %}
+                <div class="location-card location-item" data-type="dorm" data-address="Киров, {{ item.address }}" data-lat="{{ item.lat }}" data-lon="{{ item.lon }}">
+                    <img class="location-photo" src="{{ item.image_url }}" alt="{{ item.name }}">
+                    <div class="location-body">
+                        <h3>{{ item.name }}</h3>
+                        <p><strong>Адрес:</strong> {{ item.address }}</p>
+                        <p><strong>Телефон:</strong> {{ item.phone }}</p>
+                        <p class="distance-text hint" data-distance-for="{{ item.name }}">Расстояние: вычисляется...</p>
+                        <button class="map-route-btn" data-route-name="{{ item.name }}" data-lat="{{ item.lat }}" data-lon="{{ item.lon }}" type="button">Маршрут сюда</button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="map-section-header second-header">
+            <h2>Учебные корпуса</h2>
+            <a href="{{ buildings_source_url }}" target="_blank" rel="noopener noreferrer">Источник</a>
+        </div>
+        <div class="location-grid compact-grid">
+            {% for item in buildings %}
+                <div class="location-card location-item" data-type="building" data-address="Киров, {{ item.address }}" data-lat="{{ item.lat }}" data-lon="{{ item.lon }}" data-building-number="{{ item.name|replace('Корпус №', '')|replace(' (Колледж)', '') }}">
+                    <img class="location-photo" src="{{ item.image_url }}" alt="{{ item.name }}">
+                    <div class="location-body">
+                        <h3>{{ item.name }}</h3>
+                        <p><strong>Адрес:</strong> {{ item.address }}</p>
+                        <p><strong>Телефон:</strong> {{ item.phone }}</p>
+                        <p class="distance-text hint" data-distance-for="{{ item.name }}">Расстояние: вычисляется...</p>
+                        <button class="map-route-btn" data-route-name="{{ item.name }}" data-lat="{{ item.lat }}" data-lon="{{ item.lon }}" type="button">Маршрут сюда</button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key }}&lang=ru_RU&load=package.full" type="text/javascript"></script>
+<script>
+    const mapStatus = document.getElementById('mapStatus');
+    let myMap, userPlacemark = null;
+    const allLocations = [
+        ...{{ dorms|tojson }},
+        ...{{ buildings|tojson }}
+    ].map(item => ({
+        ...item,
+        type: item.name.includes('Общежитие') ? 'dorm' : 'building',
+        fullAddress: `Киров, ${item.address}`
+    }));
+
+    const placemarks = [];
+    let userCoords = null;
+    const highlightedBuilding = '{{ highlighted_building }}';
+    let activeRoute = null;
+
+    function formatDistance(km) {
+        if (km < 1) return `${Math.round(km * 1000)} м`;
+        return `${km.toFixed(1)} км`;
+    }
+
+    function haversine(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+        return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+
+    function updateDistances() {
+        if (!userCoords) return;
+        for (const place of allLocations) {
+            const line = document.querySelector(`[data-distance-for="${place.name}"]`);
+            if (!line || place.lat === undefined) continue;
+            const km = haversine(userCoords.lat, userCoords.lon, place.lat, place.lon);
+            line.textContent = `Расстояние: ${formatDistance(km)}`;
+        }
+    }
+
+    function applyFilter(selected) {
+        document.querySelectorAll('.location-item').forEach(card => {
+            const ok = selected === 'all' || card.dataset.type === selected;
+            card.style.display = ok ? '' : 'none';
+        });
+        placemarks.forEach(pm => {
+            const ok = selected === 'all' || pm.placeType === selected;
+            if (ok) {
+                myMap.geoObjects.add(pm);
+            } else {
+                myMap.geoObjects.remove(pm);
+            }
+        });
+    }
+
+    ymaps.ready(function () {
+        myMap = new ymaps.Map('vyatsuMap', {
+            center: [58.6036, 49.6680],
+            zoom: 12,
+            controls: ['zoomControl', 'typeSelector']
+        });
+
+        let added = 0;
+        let processed = 0;
+
+        function addPlacemark(place, coords) {
+            place.lat = coords[0];
+            place.lon = coords[1];
+            const pm = new ymaps.Placemark(coords, {
+                balloonContent: `<strong>${place.name}</strong><br>${place.address}<br>${place.phone}`,
+                hintContent: place.name
+            }, {
+                preset: place.type === 'dorm' ? 'islands#blueHomeCircleIcon' : 'islands#darkGreenEducationCircleIcon'
+            });
+            pm.placeType = place.type;
+            placemarks.push(pm);
+            myMap.geoObjects.add(pm);
+            added += 1;
+        }
+
+        function finalizeStatus() {
+            if (processed < allLocations.length) {
+                mapStatus.textContent = `Загружаем точки: ${processed}/${allLocations.length}...`;
+                return;
+            }
+            mapStatus.textContent = added
+                ? `Загружено точек: ${added}. Нажмите "Моё местоположение", чтобы увидеть расстояния.`
+                : 'Не удалось определить координаты объектов.';
+        }
+
+        allLocations.forEach(function (place) {
+            if (typeof place.lat === 'number' && typeof place.lon === 'number') {
+                addPlacemark(place, [place.lat, place.lon]);
+            }
+            processed += 1;
+            finalizeStatus();
+        });
+
+        if (highlightedBuilding) {
+            const card = document.querySelector(`.location-item[data-building-number="${highlightedBuilding}"]`);
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.classList.add('active');
+            }
+        }
+    });
+
+    function buildRouteTo(targetLat, targetLon, targetName) {
+        if (!userCoords) {
+            mapStatus.textContent = 'Сначала нажмите "Моё местоположение", затем постройте маршрут.';
+            return;
+        }
+        if (!ymaps.multiRouter || !ymaps.multiRouter.MultiRoute) {
+            const url = `https://yandex.ru/maps/?rtext=${userCoords.lat},${userCoords.lon}~${targetLat},${targetLon}&rtt=pd`;
+            window.open(url, '_blank', 'noopener');
+            mapStatus.textContent = `Маршрут открыт в Яндекс.Картах: ${targetName}`;
+            return;
+        }
+        if (activeRoute) {
+            myMap.geoObjects.remove(activeRoute);
+        }
+        activeRoute = new ymaps.multiRouter.MultiRoute({
+            referencePoints: [
+                [userCoords.lat, userCoords.lon],
+                [targetLat, targetLon]
+            ],
+            params: { routingMode: 'pedestrian' }
+        }, {
+            boundsAutoApply: true
+        });
+        myMap.geoObjects.add(activeRoute);
+        mapStatus.textContent = `Маршрут построен до: ${targetName}`;
+    }
+
+    document.getElementById('locateMeBtn').addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            mapStatus.textContent = 'Геолокация не поддерживается браузером.';
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                userCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+                if (userPlacemark) myMap.geoObjects.remove(userPlacemark);
+                userPlacemark = new ymaps.Placemark([userCoords.lat, userCoords.lon], {
+                    balloonContent: 'Вы здесь',
+                    hintContent: 'Моё местоположение'
+                }, { preset: 'islands#redCircleIcon' });
+                myMap.geoObjects.add(userPlacemark);
+                myMap.setCenter([userCoords.lat, userCoords.lon], 13);
+                updateDistances();
+                mapStatus.textContent = 'Геопозиция определена. Расстояния обновлены.';
+            },
+            () => {
+                mapStatus.textContent = 'Не удалось получить геопозицию. Проверьте разрешения браузера.';
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    });
+
+    document.querySelectorAll('.map-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.map-filter').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            applyFilter(btn.dataset.type);
+        });
+    });
+
+    document.querySelectorAll('.map-route-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const lat = Number(btn.dataset.lat);
+            const lon = Number(btn.dataset.lon);
+            const name = btn.dataset.routeName || 'объект';
+            if (Number.isFinite(lat) && Number.isFinite(lon)) {
+                buildRouteTo(lat, lon, name);
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-form" style="max-width: 880px;">
+    <h2>Цифровой студенческий билет</h2>
+    {% if not card %}
+        <div class="admin-note">
+            <h3>Студенческий билет не оформлен</h3>
+            <p>Обратитесь к администратору для создания студбилета.</p>
+        </div>
+    {% else %}
+        <div class="admin-note">
+            <h3>Предъявление студбилета</h3>
+            <p>Покажите QR-код и данные ниже сотруднику университета.</p>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items:start;">
+            <div>
+                <p><strong>ФИО:</strong> {{ fio }}</p>
+                <p><strong>Группа:</strong> {{ profile.group_name }}</p>
+                <p><strong>ID студента:</strong> {{ profile.student_id }}</p>
+                <p><strong>Курс:</strong> {{ card.course_number }}</p>
+                <p><strong>Форма обучения:</strong> {{ card.study_form }}</p>
+                <p><strong>Дата выдачи:</strong> {{ card.issue_date }}</p>
+                <p><strong>Номер студбилета:</strong> {{ masked_number }}</p>
+            </div>
+            <div style="text-align:center;">
+                <img src="{{ qr_url }}" alt="QR студенческого билета" style="max-width:260px; width:100%; border-radius:8px;">
+                <p class="hint">QR для проверки подлинности</p>
+            </div>
+        </div>
+        <hr style="margin: 1rem 0;">
+        <div>
+            <h3 style="margin-top:0;">Фото лица</h3>
+            {% if card.face_photo_path %}
+                <img src="{{ url_for('student_card_face_photo', card_id=card.id) }}" alt="Фото лица" style="width:100%; max-height:320px; object-fit:cover; border-radius:8px;">
+            {% else %}
+                <p class="hint">Фото лица не загружено.</p>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

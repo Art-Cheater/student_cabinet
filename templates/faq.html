@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>Часто задаваемые вопросы</h1>
+    <p>Ответы на популярные вопросы студентов ВятГУ. Информация с официального сайта vyatsu.ru.</p>
+</div>
+
+<div class="faq-search">
+    <input type="text" id="faqSearch" placeholder="Поиск по вопросам..." autocomplete="off">
+</div>
+
+<div class="faq-list">
+    {% for faq in faqs %}
+        <div class="faq-item">
+            <button class="faq-question" type="button" aria-expanded="false">
+                <span class="faq-icon">+</span>
+                <span class="faq-text">{{ faq.question }}</span>
+            </button>
+            <div class="faq-answer">
+                <p>{{ faq.answer }}</p>
+                {% if faq.source_url %}
+                    <p><a href="{{ faq.source_url }}" target="_blank" rel="noopener noreferrer">Официальный источник ВятГУ</a></p>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<script>
+    document.querySelectorAll('.faq-question').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const expanded = btn.getAttribute('aria-expanded') === 'true';
+            btn.setAttribute('aria-expanded', !expanded);
+            btn.querySelector('.faq-icon').textContent = expanded ? '+' : '−';
+        });
+    });
+
+    document.getElementById('faqSearch').addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        document.querySelectorAll('.faq-item').forEach(item => {
+            const question = item.querySelector('.faq-text').textContent.toLowerCase();
+            item.style.display = question.includes(query) ? '' : 'none';
+        });
+    });
+</script>
+{% endblock %}

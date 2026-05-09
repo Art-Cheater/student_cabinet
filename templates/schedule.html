@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="schedule-container">
+    <div class="schedule-header">
+        <h2>Расписание занятий</h2>
+        <p>Группа: <strong>{{ group }}</strong></p>
+        <div class="schedule-filters">
+            <a href="{{ url_for('schedule', filter='week') }}" class="schedule-filter {% if filter_mode == 'week' %}active{% endif %}">Вся неделя</a>
+            <a href="{{ url_for('schedule', filter='today') }}" class="schedule-filter {% if filter_mode == 'today' %}active{% endif %}">Сегодня</a>
+            <a href="{{ url_for('schedule', filter='tomorrow') }}" class="schedule-filter {% if filter_mode == 'tomorrow' %}active{% endif %}">Завтра</a>
+        </div>
+    </div>
+
+    {% if schedule %}
+        {% set ns = namespace(current_day='') %}
+        {% for lesson in schedule %}
+            {% if lesson.day_of_week != ns.current_day %}
+                {% if not loop.first %}
+                    </div>
+                {% endif %}
+                {% set ns.current_day = lesson.day_of_week %}
+                <div class="day-card">
+                    <h3 class="day-title">{{ lesson.day_of_week }}</h3>
+            {% endif %}
+
+            <div class="lesson-item">
+                <div class="lesson-number">{{ lesson.lesson_number }}</div>
+                <div class="lesson-time">
+                    {{ lesson.start_time }}{% if lesson.end_time %} - {{ lesson.end_time }}{% endif %}
+                </div>
+                <div class="lesson-info">
+                    <div class="lesson-subject">
+                        {{ lesson.discipline }}
+                        {% if lesson.lesson_type %}
+                            {% set lesson_type = lesson.lesson_type|lower %}
+                            <span class="lesson-type
+                                {% if 'лек' in lesson_type %}type-lecture{% endif %}
+                                {% if 'практ' in lesson_type or 'семинар' in lesson_type %}type-practice{% endif %}
+                                {% if 'лаб' in lesson_type %}type-lab{% endif %}
+                            ">{{ lesson.lesson_type }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="lesson-details">
+                        <span>Преподаватель: {{ lesson.teacher or '-' }}</span>
+                        <span>
+                            Аудитория: {{ lesson.classroom or '-' }}
+                            {% if lesson.building_number %}
+                                · <a href="{{ url_for('map', building=lesson.building_number) }}">Показать корпус на карте</a>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {% if loop.last %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <div class="empty-schedule">
+            <p>Расписание не найдено для группы "{{ group }}".</p>
+            <p>Проверь, что расписание загружено в базу и название группы совпадает.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

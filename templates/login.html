@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-form">
+    <h2>Вход в личный кабинет</h2>
+    <form method="POST">
+        <div class="form-group">
+            <label>Email (учебная почта)</label>
+            <input type="email" name="email" placeholder="student@vyatsu.ru" required>
+        </div>
+        <div class="form-group">
+            <label>Пароль</label>
+            <input
+                type="password"
+                name="password"
+                placeholder="••••••"
+                pattern="[A-Za-z0-9]+"
+                title="Только английские буквы и цифры"
+                required
+            >
+        </div>
+        <button type="submit" class="btn btn-primary">Войти</button>
+    </form>
+    <p class="auth-link">Доступ выдаётся администратором.</p>
+</div>
+{% endblock %}

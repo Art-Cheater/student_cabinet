@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Новости колледжа</h1>
+<p>
+    Источник:
+    <a href="{{ source_url }}" target="_blank" rel="noopener noreferrer">{{ source_url }}</a>
+</p>
+
+{% if news %}
+    <div class="news-items">
+        {% for item in news %}
+            <div class="news-item">
+                {% if item.image_url %}
+                    <img class="news-image" src="{{ item.image_url }}" alt="{{ item.title }}">
+                {% endif %}
+                <div class="news-content">
+                    <h3>{{ item.title }}</h3>
+                    {% if item.date %}
+                        <p class="hint">{{ item.date }}</p>
+                    {% endif %}
+                    <p>{{ item.summary }}</p>
+                    {% if item.url %}
+                        <p><a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Читать в VK →</a></p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert">Новости пока недоступны.</div>
+{% endif %}
+{% endblock %}

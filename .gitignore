@@ -1,0 +1,6 @@
+vk_token.txt
+__pycache__/
+*.pyc
+*.db
+static/photos/
+schedule_parser/uploads/

@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-form admin-panel">
+    <h2>Админ-панель расписания</h2>
+    <p class="hint">Загрузи новый Excel-файл, чтобы обновить расписание на сайте.</p>
+    <div class="admin-note">
+        <h3>VK новости: где менять токен</h3>
+        <p>Файл: <code>vk_token.txt</code> в корне проекта.</p>
+        <p>Вставьте токен одной строкой (без кавычек и комментариев), затем перезапустите <code>python app.py</code>.</p>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="upload_schedule">
+        <div class="form-group">
+            <label for="schedule_file">Excel-файл (.xlsx)</label>
+            <input type="file" id="schedule_file" name="schedule_file" accept=".xlsx" required>
+        </div>
+        <button type="submit">Загрузить и обновить</button>
+    </form>
+
+    <hr style="margin: 1rem 0;">
+    <h3>Создать студента и студбилет</h3>
+    <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="create_user">
+        <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="email" required>
+        </div>
+        <div class="form-group">
+            <label>Пароль (латиница+цифры) *</label>
+            <input type="text" name="password" pattern="[A-Za-z0-9]+" required>
+        </div>
+        <div class="form-group">
+            <label>Группа *</label>
+            <input type="text" name="group_name" placeholder="ФКк-104-52-00" required>
+        </div>
+        <div class="form-group">
+            <label>Фамилия *</label>
+            <input type="text" name="last_name" required>
+        </div>
+        <div class="form-group">
+            <label>Имя *</label>
+            <input type="text" name="first_name" required>
+        </div>
+        <div class="form-group">
+            <label>Отчество</label>
+            <input type="text" name="middle_name">
+        </div>
+        <div class="form-group">
+            <label>Номер студбилета *</label>
+            <input type="text" name="card_number" pattern="[0-9]+" required>
+        </div>
+        <div class="form-group">
+            <label>Форма обучения *</label>
+            <select name="study_form" required>
+                <option value="">— Выберите —</option>
+                <option value="Очная">Очная</option>
+                <option value="Заочная">Заочная</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Дата выдачи *</label>
+            <input type="date" name="issue_date" required>
+        </div>
+        <div class="form-group">
+            <label>Курс *</label>
+            <select name="course_number" required>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Фото лица студента</label>
+            <input type="file" name="face_photo" accept=".png,.jpg,.jpeg,.gif,.webp">
+        </div>
+        <button type="submit">Создать аккаунт и студбилет</button>
+    </form>
+    <hr style="margin: 1rem 0;">
+    <h3>Список студентов (редактирование)</h3>
+    {% if students %}
+        {% for s in students %}
+            {% if s.card_id %}
+                <form method="POST" enctype="multipart/form-data" style="border:1px solid #ddd;padding:12px;border-radius:8px;margin-bottom:12px;">
+                    <input type="hidden" name="action" value="update_student">
+                    <input type="hidden" name="user_id" value="{{ s.user_id }}">
+                    <p class="hint" style="margin-top:0;">
+                        ID: {{ s.user_id }} | {{ s.student_id or 'без student_id' }}
+                    </p>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="email" value="{{ s.email or '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Группа *</label>
+                        <input type="text" name="group_name" value="{{ s.group_name or '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Фамилия *</label>
+                        <input type="text" name="last_name" value="{{ s.last_name or '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Имя *</label>
+                        <input type="text" name="first_name" value="{{ s.first_name or '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Отчество</label>
+                        <input type="text" name="middle_name" value="{{ s.middle_name or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Новый номер студбилета (необязательно)</label>
+                        <input type="text" name="card_number" value="" pattern="[0-9]+">
+                        <small class="hint">Текущий номер: ****{{ s.card_number_last4 or '----' }}. Оставьте пустым, чтобы не менять.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Форма обучения *</label>
+                        <select name="study_form" required>
+                            <option value="Очная" {% if s.study_form == 'Очная' %}selected{% endif %}>Очная</option>
+                            <option value="Заочная" {% if s.study_form == 'Заочная' %}selected{% endif %}>Заочная</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Дата выдачи *</label>
+                        <input type="date" name="issue_date" value="{{ s.issue_date or '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Курс *</label>
+                        <select name="course_number" required>
+                            <option value="1" {% if s.course_number == 1 %}selected{% endif %}>1</option>
+                            <option value="2" {% if s.course_number == 2 %}selected{% endif %}>2</option>
+                            <option value="3" {% if s.course_number == 3 %}selected{% endif %}>3</option>
+                            <option value="4" {% if s.course_number == 4 %}selected{% endif %}>4</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Обновить фото лица</label>
+                        <input type="file" name="face_photo" accept=".png,.jpg,.jpeg,.gif,.webp">
+                    </div>
+                    {% if s.face_photo_path %}
+                        <p class="hint">Текущее фото лица: загружено.</p>
+                    {% else %}
+                        <p class="hint">Текущее фото лица: не загружено.</p>
+                    {% endif %}
+                    <button type="submit">Сохранить изменения</button>
+                </form>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <p class="hint">Пока нет студентов в базе.</p>
+    {% endif %}
+
+    <p class="auth-link">
+        <a href="{{ url_for('admin_logout') }}">Выйти из админ-панели</a>
+    </p>
+
+    {% if uploaded_filename %}
+        <p class="hint">Последний загруженный файл: <strong>{{ uploaded_filename }}</strong></p>
+    {% endif %}
+
+    {% if parser_output %}
+        <div class="admin-log">
+            <h3>Лог обновления</h3>
+            <pre>{{ parser_output }}</pre>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

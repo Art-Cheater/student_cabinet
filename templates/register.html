@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-form">
+    <h2>Регистрация</h2>
+    {% if registration_disabled %}
+        <div class="admin-note">
+            <p>Саморегистрация отключена. Аккаунты создаются администратором.</p>
+        </div>
+    {% endif %}
+    <form method="POST">
+        <div class="form-group">
+            <label>ФИО</label>
+            <input type="text" name="full_name" required>
+        </div>
+        <div class="form-group">
+            <label>Email (учебная почта)</label>
+            <input type="email" name="email" required>
+        </div>
+        <div class="form-group">
+            <label>Группа</label>
+            <select name="group_name" required {% if registration_disabled %}disabled{% endif %}>
+                <option value="">Выберите группу</option>
+                {% for group in groups %}
+                <option value="{{ group.name }}">{{ group.name }}</option>
+                {% endfor %}
+            </select>
+            <small>Курс определится автоматически</small>
+        </div>
+        <div class="form-group">
+            <label>Пароль</label>
+            <input
+                type="password"
+                name="password"
+                pattern="[A-Za-z0-9]+"
+                title="Только английские буквы и цифры"
+                {% if registration_disabled %}disabled{% endif %}
+                required
+            >
+        </div>
+        <button type="submit" {% if registration_disabled %}disabled{% endif %}>Зарегистрироваться</button>
+    </form>
+    <p>Уже есть аккаунт? <a href="/login">Войти</a></p>
+</div>
+{% endblock %}

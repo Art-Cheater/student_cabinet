@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero">
+    <h1>Личный кабинет студента</h1>
+    {% if session.user_id %}
+        <p>Вы авторизованы. Здесь можно быстро перейти к нужным разделам.</p>
+    {% else %}
+        <p>Добро пожаловать в цифровое пространство ВятГУ</p>
+    {% endif %}
+    <div class="buttons">
+        {% if session.user_id %}
+            <a href="/dashboard" class="btn btn-primary">Открыть кабинет</a>
+            <a href="/schedule" class="btn btn-secondary">Моё расписание</a>
+        {% else %}
+            <a href="/login" class="btn btn-primary">Вход</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="features">
+    <div class="feature">
+        <h3>📅 Расписание занятий</h3>
+        <p>Актуальное расписание для вашей группы с автоматическим обновлением</p>
+    </div>
+    <div class="feature">
+        <h3>🎓 Цифровой студенческий</h3>
+        <p>Оформляется администратором университета</p>
+    </div>
+    <div class="feature">
+        <h3>🗺️ Карта корпусов</h3>
+        <p>Удобная навигация по всем учебным корпусам ВятГУ</p>
+    </div>
+    <div class="feature">
+        <h3>❓ Ответы на вопросы</h3>
+        <p>Часто задаваемые вопросы и помощь студентам</p>
+    </div>
+</div>
+
+<div class="news-preview">
+    <h2>Последние новости</h2>
+    <div class="news-items">
+        <div class="news-item">
+            <h3>День открытых дверей</h3>
+            <p>Приглашаем абитуриентов и родителей 20 апреля</p>
+        </div>
+        <div class="news-item">
+            <h3>Студенческая конференция</h3>
+            <p>Прошла ежегодная студенческая конференция</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
