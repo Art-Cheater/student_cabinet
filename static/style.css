@@ -97,6 +97,65 @@ nav {
     color: #ffffff;
 }
 
+/* Кнопка «гамбургер» — только мобилка/планшет (см. @media ниже) */
+.nav-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    margin: 0;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    flex-shrink: 0;
+    z-index: 120;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.nav-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-toggle-bar {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: #fff;
+    border-radius: 1px;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+body.nav-menu-open .nav-toggle .nav-toggle-bar:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+}
+
+body.nav-menu-open .nav-toggle .nav-toggle-bar:nth-child(2) {
+    opacity: 0;
+}
+
+body.nav-menu-open .nav-toggle .nav-toggle-bar:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+.nav-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 108;
+    background: rgba(10, 20, 40, 0.55);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+}
+
+.nav-backdrop:not([hidden]) {
+    display: block;
+}
+
 .container {
     max-width: 1200px;
     margin: 2rem auto;
@@ -985,23 +1044,6 @@ select:focus {
 }
 
 @media (max-width: 700px) {
-    nav {
-        padding: 0.7rem 0.75rem;
-    }
-
-    .logo a {
-        font-size: 1.2rem;
-    }
-
-    .nav-links {
-        width: 100%;
-        justify-content: flex-start;
-    }
-
-    .nav-main-links {
-        width: 100%;
-    }
-
     .lesson-item {
         flex-direction: column;
     }
@@ -1020,5 +1062,151 @@ select:focus {
 
     .location-photo {
         max-height: 190px;
+    }
+}
+
+/* ========== Мобильная вёрстка: меню-«шторка» и крупные зоны нажатия ========== */
+@media (max-width: 768px) {
+    .site-nav {
+        padding: 0.65rem 0.85rem;
+        z-index: 110;
+    }
+
+    .nav-container {
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .logo a {
+        font-size: 1.15rem;
+    }
+
+    .nav-toggle {
+        display: flex;
+    }
+
+    .nav-links {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: min(90vw, 300px);
+        height: 100vh;
+        height: 100dvh;
+        margin: 0;
+        padding: calc(env(safe-area-inset-top, 0px) + 4.25rem) 1rem 2rem;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 0;
+        flex-wrap: nowrap;
+        background: linear-gradient(180deg, #152a52 0%, #10203f 100%);
+        box-shadow: -8px 0 32px rgba(0, 0, 0, 0.35);
+        transform: translateX(100%);
+        transition: transform 0.28s ease;
+        z-index: 112;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body.nav-menu-open .nav-links {
+        transform: translateX(0);
+    }
+
+    body.nav-menu-open {
+        overflow: hidden;
+        touch-action: none;
+    }
+
+    .nav-main-links {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        gap: 0.35rem;
+        flex-wrap: nowrap;
+    }
+
+    .nav-main-links a {
+        padding: 0.85rem 1rem;
+        font-size: 1rem;
+        border-radius: 10px;
+        margin-left: 0 !important;
+        text-align: left;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+
+    .nav-actions {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        width: 100%;
+    }
+
+    .nav-actions .logout-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        width: 100%;
+        text-align: center;
+    }
+
+    .container {
+        margin: 1rem auto;
+        padding: 0 0.85rem;
+    }
+
+    .hero {
+        padding: 1.75rem 1rem;
+    }
+
+    .hero h1 {
+        font-size: 1.55rem;
+        line-height: 1.25;
+    }
+
+    .buttons .btn {
+        display: block;
+        margin: 0.5rem 0;
+        width: 100%;
+        text-align: center;
+    }
+
+    .dashboard-cards {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-top: 1.25rem;
+    }
+
+    .admin-panel {
+        max-width: none;
+    }
+
+    .auth-form {
+        padding: 1.35rem 1rem;
+    }
+
+    #vyatsuMap {
+        height: min(55vh, 380px);
+    }
+
+    .schedule-header {
+        padding: 16px;
+    }
+
+    .schedule-filters {
+        gap: 8px;
+    }
+
+    footer {
+        padding: 0.85rem;
+        font-size: 0.85rem;
+        line-height: 1.45;
+    }
+
+    .card-icon {
+        font-size: 2.25rem;
     }
 }

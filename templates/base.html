@@ -15,12 +15,23 @@
     <link rel="manifest" href="{{ url_for('pwa_manifest') }}">
 </head>
 <body>
-    <nav>
+    <nav class="site-nav" aria-label="Основная навигация">
         <div class="nav-container">
             <div class="logo">
                 <a href="/">ВятГУ</a>
             </div>
-            <div class="nav-links">
+            <button type="button"
+                    class="nav-toggle"
+                    id="navToggle"
+                    aria-expanded="false"
+                    aria-controls="nav-menu"
+                    aria-label="Открыть меню">
+                <span class="nav-toggle-bar" aria-hidden="true"></span>
+                <span class="nav-toggle-bar" aria-hidden="true"></span>
+                <span class="nav-toggle-bar" aria-hidden="true"></span>
+            </button>
+            <div class="nav-backdrop" id="navBackdrop" hidden aria-hidden="true"></div>
+            <div class="nav-links" id="nav-menu">
                 <div class="nav-main-links">
                     <a href="/" class="{% if request.path == '/' %}active{% endif %}">Главная</a>
                     {% if session.user_id %}
@@ -62,6 +73,47 @@
         <p>© 2026 Вятский государственный университет | Личный кабинет студента</p>
     </footer>
     <script>
+        (function () {
+            var toggle = document.getElementById('navToggle');
+            var backdrop = document.getElementById('navBackdrop');
+            var menu = document.getElementById('nav-menu');
+            if (!toggle || !backdrop || !menu) return;
+
+            function openMenu() {
+                document.body.classList.add('nav-menu-open');
+                toggle.setAttribute('aria-expanded', 'true');
+                toggle.setAttribute('aria-label', 'Закрыть меню');
+                backdrop.hidden = false;
+                backdrop.setAttribute('aria-hidden', 'false');
+            }
+            function closeMenu() {
+                document.body.classList.remove('nav-menu-open');
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.setAttribute('aria-label', 'Открыть меню');
+                backdrop.hidden = true;
+                backdrop.setAttribute('aria-hidden', 'true');
+            }
+            function toggleMenu() {
+                if (document.body.classList.contains('nav-menu-open')) closeMenu();
+                else openMenu();
+            }
+
+            toggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                toggleMenu();
+            });
+            backdrop.addEventListener('click', closeMenu);
+            menu.querySelectorAll('a').forEach(function (a) {
+                a.addEventListener('click', closeMenu);
+            });
+            window.addEventListener('resize', function () {
+                if (window.matchMedia('(min-width: 769px)').matches) closeMenu();
+            });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') closeMenu();
+            });
+        })();
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
                 navigator.serviceWorker.register('{{ url_for("pwa_service_worker") }}').catch(function () {});
