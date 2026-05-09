@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file, abort
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file, abort, send_from_directory
 import sqlite3
 import os
 import re
@@ -1167,6 +1167,28 @@ def appointment():
         return redirect(url_for('appointment'))
     
     return render_template('appointment.html')
+
+
+@app.route('/manifest.webmanifest')
+def pwa_manifest():
+    return send_from_directory(
+        app.static_folder,
+        'manifest.webmanifest',
+        mimetype='application/manifest+json',
+        max_age=3600,
+    )
+
+
+@app.route('/sw.js')
+def pwa_service_worker():
+    resp = send_from_directory(
+        app.static_folder,
+        'sw.js',
+        mimetype='application/javascript',
+    )
+    resp.headers['Cache-Control'] = 'no-cache, max-age=0'
+    return resp
+
 
 if __name__ == '__main__':
     # Локально: PORT не задан — 5000. На Render и др. хостингах: PORT задаёт платформа.
