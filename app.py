@@ -365,22 +365,38 @@ def hash_card_number(card_number):
     return hashlib.sha256((card_number or '').strip().encode('utf-8')).hexdigest()
 
 def fetch_vk_news_from_public_page(limit=10):
+    """Парсинг публичного виджета VK (без токена). На IP хостингов ВК часто отдаёт заглушку — тогда нужен VK_ACCESS_TOKEN."""
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                      '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        ),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.5',
+        'Referer': 'https://vk.com/',
+        'Connection': 'keep-alive',
     }
     widget_url = (
         'https://vk.com/widget_community.php'
         '?app=0&width=320px&_ver=1'
         f'&gid={VK_GROUP_ID}&mode=4&color1=FFFFFF&color2=2B587A&color3=5B7FA6'
     )
-    try:
-        resp = requests.get(widget_url, timeout=15, headers=headers)
-        resp.raise_for_status()
-        resp.encoding = 'cp1251'
-        page_html = resp.text
-    except Exception as exc:
-        return [], f'Не удалось получить VK widget: {exc}'
+    page_html = None
+    last_err = None
+    for url in (widget_url, widget_url.replace('https://vk.com/', 'https://m.vk.com/')):
+        try:
+            resp = requests.get(url, timeout=25, headers=headers)
+            resp.raise_for_status()
+            resp.encoding = 'cp1251'
+            page_html = resp.text
+            if page_html and 'wpt-' in page_html:
+                break
+            last_err = 'VK вернул страницу без постов (возможна блокировка IP хостинга).'
+        except Exception as exc:
+            last_err = str(exc)
+            continue
+    if not page_html:
+        return [], last_err or 'Не удалось получить VK widget.'
 
     post_ids = []
     # Основной источник ID постов в виджете сейчас.
@@ -797,14 +813,23 @@ def schedule():
 
 @app.route('/news')
 def news():
-    news_items, _parse_error = fetch_vk_news(limit=10)
+    news_items, parse_error = fetch_vk_news(limit=10)
+    if not news_items:
+        cached = _load_cached_news()
+        if cached:
+            news_items = cached[:10]
+            parse_error = parse_error or (
+                'Не удалось получить свежие новости из ВК с этого сервера '
+                '(у части хостингов VK режет запросы по IP). '
+                'Показан последний сохранённый кэш. Для стабильной загрузки задайте VK_ACCESS_TOKEN '
+                'в переменных окружения Render.'
+            )
 
     return render_template(
         'news.html',
         news=news_items,
         source_url=VK_GROUP_URL,
-        parse_error=None,
-        is_fallback=False,
+        parse_error=parse_error,
     )
 
 @app.route('/admin/login', methods=['GET', 'POST'])

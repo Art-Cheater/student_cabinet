@@ -6,6 +6,10 @@
     <a href="{{ source_url }}" target="_blank" rel="noopener noreferrer">{{ source_url }}</a>
 </p>
 
+{% if parse_error %}
+    <div class="hint" style="margin-bottom: 1rem;">{{ parse_error }}</div>
+{% endif %}
+
 {% if news %}
     <div class="news-items">
         {% for item in news %}
@@ -27,6 +31,11 @@
         {% endfor %}
     </div>
 {% else %}
-    <div class="alert">Новости пока недоступны.</div>
+    <div class="alert">
+        Новости пока недоступны.
+        {% if not parse_error %}
+            <p class="hint">На сервере без токена ВК часто блокирует автоматические запросы — задайте переменную окружения <code>VK_ACCESS_TOKEN</code> в настройках хостинга.</p>
+        {% endif %}
+    </div>
 {% endif %}
 {% endblock %}

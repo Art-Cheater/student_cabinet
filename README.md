@@ -13,7 +13,7 @@
 - Python 3.11+ (рекомендуется 3.12)
 - Flask
 - SQLite (`students.db`, `content.db`, `schedule.db`)
-- `requests`, `bcrypt`, `openpyxl`, `Pillow`, `qrcode`
+- `requests`, `bcrypt`, `openpyxl`
 
 ## Быстрый запуск
 
@@ -60,7 +60,7 @@ python app.py
 - `app.py` — основная логика приложения.
 - `students.db`, `content.db`, `schedule.db` — рабочие базы SQLite.
 - `private_storage/` — приватные файлы (например, фото лица студентов).
-- `vk_token.txt` — опциональный токен ВК (если используется).
+- `vk_token.txt` — опциональный токен ВК (локально). На сервере (например Render) задайте **`VK_ACCESS_TOKEN`** в переменных окружения — без него ВК часто **не отдаёт ленту** запросам с IP хостингов, и парсинг виджета может вернуть пустой результат.
 
 ## Тесты
 
