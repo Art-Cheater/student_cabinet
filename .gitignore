@@ -16,3 +16,5 @@ private_storage/
 *.sqlite
 *.sqlite3
 *.log
+Test/run/
+Test/dev_certs/

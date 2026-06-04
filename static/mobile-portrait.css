@@ -98,46 +98,54 @@ body.guard-scan-page .container {
     display: none !important;
 }
 
-.guard-pass-modal-box {
-    max-width: 420px;
-    max-height: 92vh;
-    overflow-y: auto;
+.guard-pass-panel {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    border-radius: 16px;
+    background: var(--campus-surface, #fff);
+    border: 1px solid var(--campus-border, #e2e8f0);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
-.guard-modal-title {
+.guard-pass-panel--ok {
+    border-color: #86d9a0;
+}
+
+.guard-pass-panel--error {
+    border-color: #f5a5a5;
+    background: #fff8f8;
+}
+
+.guard-pass-title {
     margin: 0 0 0.5rem;
     padding-left: 12px;
     border-left: 4px solid var(--campus-cta, #0039A6);
+    font-size: 1.1rem;
 }
 
-.guard-modal-title--ok {
+.guard-pass-title--ok {
     color: #1a7f37;
     border-left-color: #1a7f37;
 }
 
-.guard-modal-title--error {
-    color: #b42318;
-    border-left-color: #b42318;
-}
-
-.guard-modal-badge {
+.guard-pass-badge {
     font-weight: 700;
     color: #1a7f37;
     margin: 0 0 1rem;
 }
 
-.guard-modal-fio {
+.guard-pass-fio {
     font-size: 1.15rem;
     font-weight: 700;
     margin: 0 0 0.75rem;
 }
 
-.guard-modal-photo-wrap {
+.guard-pass-photo-wrap {
     text-align: center;
     margin-bottom: 1rem;
 }
 
-.guard-modal-photo {
+.guard-pass-photo {
     width: 100%;
     max-width: 280px;
     border-radius: 12px;
@@ -145,17 +153,16 @@ body.guard-scan-page .container {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
-.guard-modal-card {
-    margin-bottom: 1rem;
-    padding: 1rem;
+.guard-pass-card {
+    padding: 0.25rem 0 0;
 }
 
-.guard-modal-valid {
+.guard-pass-valid {
     margin-top: 0.75rem;
 }
 
-.guard-modal-error {
-    margin: 1rem 0;
+.guard-pass-error {
+    margin: 0.5rem 0 0;
     color: #b42318;
 }
 

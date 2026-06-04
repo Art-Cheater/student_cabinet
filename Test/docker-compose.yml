@@ -1,0 +1,39 @@
+# HTTPS-тест (порт 5443 — не конфликтует с основным проектом на :5000)
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: StudentCabinet
+    volumes:
+      - test_pgdata:/var/lib/postgresql/data
+
+  app:
+    build: ./run
+    ports:
+      - "5443:5443"
+    volumes:
+      - ./dev_certs:/app/dev_certs:ro
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/StudentCabinet
+      FLASK_SECRET_KEY: test-local-https
+      ADMIN_EMAIL: admin@vyatsu.ru
+      ADMIN_PASSWORD: admin123
+    command:
+      - gunicorn
+      - -b
+      - "0.0.0.0:5443"
+      - --certfile=dev_certs/cert.pem
+      - --keyfile=dev_certs/key.pem
+      - -w
+      - "2"
+      - --timeout
+      - "120"
+      - app:app
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  test_pgdata:

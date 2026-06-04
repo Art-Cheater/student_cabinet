@@ -2,9 +2,7 @@
     var statusEl = document.getElementById('cameraStatus');
     var startBtn = document.getElementById('startCameraBtn');
     var stopBtn = document.getElementById('stopCameraBtn');
-    var modal = document.getElementById('guard-pass-modal');
-    var modalBody = document.getElementById('guard-pass-modal-body');
-    var modalClose = document.getElementById('guard-pass-modal-close');
+    var resultEl = document.getElementById('guardPassResult');
     var scanner = null;
     var scanningLock = false;
     var cameraOn = false;
@@ -57,86 +55,72 @@
         return t;
     }
 
-    function openModal() {
-        if (!modal) return;
-        modal.classList.add('open');
-        modal.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeModal() {
-        if (!modal) return;
-        modal.classList.remove('open');
-        modal.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
-    }
-
     function row(label, value) {
         if (value == null || value === '') return '';
         return '<p><strong>' + escapeHtml(label) + ':</strong> ' + escapeHtml(value) + '</p>';
     }
 
-    function showPassModal(data, isError) {
-        if (!modalBody) return;
-        openModal();
+    function showPassResult(data, isError) {
+        if (!resultEl) return;
+        resultEl.hidden = false;
+
         if (isError) {
-            modalBody.innerHTML =
-                '<h3 class="guard-modal-title guard-modal-title--error">Отказ</h3>' +
-                '<p class="guard-modal-error">' + escapeHtml(data.error || 'Ошибка проверки') + '</p>' +
-                '<button type="button" class="btn btn-primary btn-block" id="guard-modal-ok">Закрыть</button>';
+            resultEl.className = 'guard-pass-panel guard-pass-panel--error';
+            resultEl.innerHTML =
+                '<h3 class="guard-pass-title">Отказ</h3>' +
+                '<p class="guard-pass-error">' + escapeHtml(data.error || 'Ошибка проверки') + '</p>';
             if (navigator.vibrate) navigator.vibrate(200);
-            bindModalOk();
-            return;
-        }
-
-        var isStudent = data.subject_type === 'student';
-        var title = isStudent ? 'Студенческий билет' : 'Пропуск преподавателя';
-        var html = '<h3 class="guard-modal-title guard-modal-title--ok">' + escapeHtml(title) + '</h3>';
-        html += '<p class="guard-modal-badge">Допуск разрешён</p>';
-
-        if (data.photo_url) {
-            html += '<div class="guard-modal-photo-wrap">' +
-                '<img src="' + escapeHtml(data.photo_url) + '" alt="Фото" class="guard-modal-photo">' +
-                '</div>';
-        }
-
-        html += '<div class="guard-modal-card student-cabinet-card">';
-        html += '<p class="guard-modal-fio">' + escapeHtml(data.fio || '') + '</p>';
-        if (isStudent) {
-            html += row('Группа', data.group);
-            html += row('ID студента', data.student_id);
-            html += row('Курс', data.course_number);
-            html += row('Форма обучения', data.study_form);
-            html += row('Дата выдачи', data.issue_date);
-            html += row('Номер студбилета', data.card_number_masked);
         } else {
-            html += row('Должность', data.position_title);
-            html += row('Подразделение', data.department);
-            html += row('№ удостоверения', data.pass_number);
+            var isStudent = data.subject_type === 'student';
+            var title = isStudent ? 'Студенческий билет' : 'Пропуск преподавателя';
+            var html = '<h3 class="guard-pass-title guard-pass-title--ok">' + escapeHtml(title) + '</h3>';
+            html += '<p class="guard-pass-badge">Допуск разрешён</p>';
+
+            if (data.photo_url) {
+                html += '<div class="guard-pass-photo-wrap">' +
+                    '<img src="' + escapeHtml(data.photo_url) + '" alt="Фото" class="guard-pass-photo" ' +
+                    'loading="eager" decoding="async" ' +
+                    'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\';">' +
+                    '<p class="hint guard-pass-photo-missing" style="display:none;">Фото не загружено</p>' +
+                    '</div>';
+            }
+
+            html += '<div class="guard-pass-card student-cabinet-card">';
+            html += '<p class="guard-pass-fio">' + escapeHtml(data.fio || '') + '</p>';
+            if (isStudent) {
+                html += row('Группа', data.group);
+                html += row('ID студента', data.student_id);
+                html += row('Курс', data.course_number);
+                html += row('Форма обучения', data.study_form);
+                html += row('Дата выдачи', data.issue_date);
+                html += row('Номер студбилета', data.card_number_masked);
+            } else {
+                html += row('Должность', data.position_title);
+                html += row('Подразделение', data.department);
+                html += row('№ удостоверения', data.pass_number);
+            }
+            html += '<p class="hint guard-pass-valid">Действует до: ' + escapeHtml(formatValidUntil(data.valid_until)) + '</p>';
+            html += '</div>';
+
+            resultEl.className = 'guard-pass-panel guard-pass-panel--ok';
+            resultEl.innerHTML = html;
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         }
-        html += '<p class="hint guard-modal-valid">Действует до: ' + escapeHtml(formatValidUntil(data.valid_until)) + '</p>';
-        html += '</div>';
-        html += '<button type="button" class="btn btn-accent btn-block" id="guard-modal-ok">Следующий</button>';
-        modalBody.innerHTML = html;
-        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-        bindModalOk();
+
+        resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    function bindModalOk() {
-        var ok = document.getElementById('guard-modal-ok');
-        if (ok) {
-            ok.onclick = function () {
-                closeModal();
-                scanningLock = false;
-                setStatus(cameraOn ? 'Наведите камеру на QR-код' : 'Нажмите «Включить камеру»');
-            };
+    function hidePassResult() {
+        if (resultEl) {
+            resultEl.hidden = true;
+            resultEl.innerHTML = '';
         }
     }
 
     async function verify(raw) {
         var token = parseToken(raw);
         if (!token) {
-            showPassModal({ error: 'Не удалось прочитать код' }, true);
+            showPassResult({ error: 'Не удалось прочитать код' }, true);
             return;
         }
         setStatus('Проверка…');
@@ -149,16 +133,18 @@
             });
             var data = await r.json();
             if (data.ok) {
-                stopCamera();
-                showPassModal(data, false);
-                setStatus('Пропуск подтверждён');
+                showPassResult(data, false);
+                setStatus('Пропуск подтверждён — можно сканировать следующий');
+                scanningLock = false;
             } else {
-                showPassModal(data, true);
+                showPassResult(data, true);
                 setStatus('Пропуск не принят');
+                setTimeout(function () { scanningLock = false; }, 2000);
             }
         } catch (e) {
-            showPassModal({ error: 'Нет связи с сервером' }, true);
+            showPassResult({ error: 'Нет связи с сервером' }, true);
             setStatus('Ошибка сети');
+            setTimeout(function () { scanningLock = false; }, 2000);
         }
     }
 
@@ -188,7 +174,7 @@
         var Html5Qrcode = getHtml5QrcodeClass();
         if (!Html5Qrcode) {
             setStatus('Сканер не загрузился');
-            showPassModal({
+            showPassResult({
                 error: 'Не загрузилась библиотека камеры. Обновите страницу или введите ссылку вручную.',
             }, true);
             return;
@@ -200,6 +186,7 @@
 
         setStatus('Запрос доступа к камере…');
         if (startBtn) startBtn.disabled = true;
+        hidePassResult();
 
         var config = { fps: 12, qrbox: qrboxSize, aspectRatio: 1.0 };
 
@@ -211,7 +198,6 @@
             }
             if (stopBtn) stopBtn.hidden = false;
             setStatus(label || 'Наведите камеру на QR-код');
-            closeModal();
         }
 
         scanner.start(
@@ -236,8 +222,8 @@
                 startBtn.disabled = false;
             }
             setStatus('Камера недоступна');
-            showPassModal({
-                error: 'Разрешите камеру в браузере. На iPhone надёжнее открыть сайт по HTTPS.',
+            showPassResult({
+                error: 'Разрешите камеру в браузере. На iPhone нужен HTTPS.',
             }, true);
         });
     }
@@ -247,13 +233,6 @@
         stopCamera();
         setStatus('Камера остановлена');
     });
-
-    if (modalClose) modalClose.addEventListener('click', closeModal);
-    if (modal) {
-        modal.addEventListener('click', function (e) {
-            if (e.target === modal) closeModal();
-        });
-    }
 
     var manualBtn = document.getElementById('manualVerifyBtn');
     var manualInput = document.getElementById('manualToken');

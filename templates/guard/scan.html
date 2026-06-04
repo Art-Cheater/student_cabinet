@@ -22,9 +22,9 @@
             <button type="button" class="btn btn-primary btn-block" id="manualVerifyBtn" style="margin-top:0.5rem;">Проверить</button>
         </div>
     </details>
-</div>
 
-{% include 'partials/guard_pass_modal.html' %}
+    <div id="guardPassResult" class="guard-pass-panel" hidden></div>
+</div>
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/html5-qrcode.min.css') }}">
 <script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/guard-scan.js') }}"></script>

@@ -1,4 +1,5 @@
 import json
+import mimetypes
 import os
 import subprocess
 import sys
@@ -1344,8 +1345,8 @@ def student_card_face_photo(user_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     is_owner = session.get('user_id') == user_id
-    is_admin = session.get('role') == 'admin'
-    if not is_owner and not is_admin:
+    role = session.get('role')
+    if not is_owner and role not in ('admin', 'guard'):
         abort(403)
     with get_db() as conn:
         prof = get_student_profile(conn, user_id)
@@ -1355,7 +1356,8 @@ def student_card_face_photo(user_id):
     abs_path = os.path.join(PRIVATE_STORAGE_DIR, path)
     if not os.path.exists(abs_path):
         abort(404)
-    return send_file(abs_path, mimetype='image/jpeg', max_age=0)
+    mime, _ = mimetypes.guess_type(abs_path)
+    return send_file(abs_path, mimetype=mime or 'image/jpeg', max_age=0)
 
 
 @app.route('/manifest.webmanifest')
