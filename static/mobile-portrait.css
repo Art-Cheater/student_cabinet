@@ -1,0 +1,246 @@
+/* Portrait mobile / PWA — load last */
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+}
+
+footer {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0));
+}
+
+.container {
+    padding-left: max(0.85rem, env(safe-area-inset-left, 0));
+    padding-right: max(0.85rem, env(safe-area-inset-right, 0));
+}
+
+body.layout-wide .container,
+body.layout-wide.admin-dashboard-page .admin-panel-page {
+    padding-left: max(0.85rem, env(safe-area-inset-left, 0));
+    padding-right: max(0.85rem, env(safe-area-inset-right, 0));
+}
+
+/* Touch-friendly forms (iOS: 16px prevents zoom on focus) */
+input,
+select,
+textarea,
+.btn,
+button[type="submit"],
+.nav-toggle,
+.map-filter,
+.map-locate-btn,
+.faq-question {
+    touch-action: manipulation;
+}
+
+.table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 1rem 0;
+}
+
+.table-scroll table {
+    min-width: 520px;
+}
+
+@media (max-width: 480px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    select,
+    textarea,
+    .btn,
+    button[type="submit"] {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .container--auth {
+        max-width: none;
+        width: 100%;
+        padding-left: max(0.75rem, env(safe-area-inset-left, 0));
+        padding-right: max(0.75rem, env(safe-area-inset-right, 0));
+    }
+
+    .auth-form {
+        padding: 1.25rem 1rem;
+    }
+
+    /* Bento / home */
+    .bento-welcome h1,
+    .heading-brand {
+        font-size: 1.35rem;
+        line-height: 1.25;
+    }
+
+    .bento-icon {
+        font-size: 1.75rem;
+    }
+
+    .home-news-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .news-item--compact {
+        grid-template-columns: 1fr;
+    }
+
+    .news-item--compact .news-image,
+    .news-image {
+        max-height: 180px;
+        width: 100%;
+        object-fit: cover;
+    }
+
+    /* Schedule page header */
+    .schedule-header {
+        padding: 1rem;
+    }
+
+    .schedule-header h1,
+    .schedule-header h2 {
+        font-size: 1.35rem;
+    }
+
+    .schedule-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .schedule-filters .btn,
+    .schedule-filters select,
+    .schedule-filters input {
+        width: 100%;
+    }
+
+    /* Map */
+    .map-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .map-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+
+    .map-filter,
+    .map-locate-btn {
+        flex: 1 1 auto;
+        min-height: 44px;
+    }
+
+    #vyatsuMap,
+    .yandex-map-frame,
+    .map-canvas-wrap--widget iframe {
+        height: min(50dvh, 360px) !important;
+        min-height: 240px;
+    }
+
+    .map-list-row {
+        min-height: 48px;
+        padding: 0.75rem 0.85rem;
+    }
+
+    .map-layout {
+        gap: 1rem;
+    }
+
+    /* Appointment / teacher */
+    .date-picker {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+        padding-bottom: 0.25rem;
+        margin-left: -0.25rem;
+        margin-right: -0.25rem;
+        padding-left: 0.25rem;
+    }
+
+    .date-pill {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+        min-width: 96px;
+    }
+
+    .appointment-teachers,
+    .teacher-slots-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    .teacher-dashboard-page .teacher-slots-sidebar {
+        max-height: none;
+    }
+
+    .student-cabinet-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+
+    .student-cabinet-qr {
+        display: flex;
+        justify-content: center;
+    }
+
+    .student-cabinet-qr img {
+        max-width: min(220px, 80vw);
+    }
+
+    .teacher-profile-actions {
+        flex-direction: column;
+    }
+
+    .teacher-profile-actions .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Admin */
+    .admin-students-toolbar {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .admin-students-toolbar .form-group,
+    .admin-students-toolbar .btn {
+        width: 100%;
+    }
+
+    .admin-pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .admin-panel-page details form input,
+    .admin-panel-page details form select {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Nav user dropdown */
+    .nav-user-dropdown {
+        left: 0;
+        right: auto;
+        min-width: min(280px, calc(100vw - 2rem));
+    }
+
+    .page-header h1 {
+        font-size: 1.35rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .nav-user-dropdown {
+        left: 0;
+        right: auto;
+    }
+}

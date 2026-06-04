@@ -49,7 +49,8 @@
         </form>
         <p class="hint">Найдено: {{ students_total }}. Страница {{ students_page }} из {{ students_total_pages }}.</p>
 
-        <table class="bookings-list" style="width:100%; margin-top:1rem;">
+        <div class="table-scroll">
+        <table class="bookings-list" style="width:100%; margin-top:0;">
             <thead><tr><th>Email</th><th>ФИО</th><th>Группа</th><th></th></tr></thead>
             <tbody>
             {% for s in students %}
@@ -92,6 +93,7 @@
             {% endfor %}
             </tbody>
         </table>
+        </div>
         {% if students_total_pages > 1 %}
         <div class="admin-pagination">
             {% if students_page > 1 %}
@@ -129,7 +131,8 @@
             <button type="submit" class="btn btn-primary">Создать</button>
         </form></details>
 
-        <table class="bookings-list" style="width:100%; margin-top:1rem;">
+        <div class="table-scroll">
+        <table class="bookings-list" style="width:100%; margin-top:0;">
             <thead><tr><th>Email</th><th>ФИО</th><th>Кабинет</th><th>Excel / ВятГУ</th><th></th></tr></thead>
             <tbody>
             {% for t in teachers %}
@@ -181,6 +184,7 @@
             {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 
     <div class="admin-tab-panel {% if tab == 'schedule' %}active{% endif %}">

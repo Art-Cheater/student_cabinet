@@ -2,8 +2,12 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0039A6">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="ВятГУ">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
     <title>Личный кабинет ВятГУ</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,6 +16,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='campus-tokens.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vyatsu-brand.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='campus-layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='mobile-portrait.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='icons/icon.svg') }}" type="image/svg+xml">
     <link rel="manifest" href="{{ url_for('pwa_manifest') }}">
 </head>
@@ -101,6 +106,9 @@
             });
             if (backdrop) backdrop.addEventListener('click', closeMenu);
             menu.querySelectorAll('.nav-main-links a').forEach(function (a) { a.addEventListener('click', closeMenu); });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') closeMenu();
+            });
 
             var userToggle = document.getElementById('navUserToggle');
             var userDropdown = document.getElementById('navUserDropdown');

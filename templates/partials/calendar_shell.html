@@ -28,7 +28,7 @@
     {% if calendar_hint %}
     <div class="calendar-empty-hint">{{ calendar_hint }}</div>
     {% endif %}
-    <div class="calendar-scroll">
+    <div class="calendar-scroll{% if cal.view == 'week' %} calendar-scroll--week-hint{% endif %}">
         <div id="calendar-root" class="calendar-wrap"
              data-view="{{ cal.view }}"
              data-week-start="{{ cal.week_start }}"
@@ -41,6 +41,30 @@
 <script type="application/json" id="calendar-events">{{ events|tojson }}</script>
 <script type="application/json" id="calendar-notes">{{ (notes_map or {})|tojson }}</script>
 <script>
+(function () {
+    var mq = window.matchMedia('(max-width: 480px)');
+    if (!mq.matches) return;
+    var root = document.getElementById('calendar-root');
+    if (!root || root.dataset.view !== 'week') return;
+    if (sessionStorage.getItem('calendar-prefer-week')) return;
+    var u = new URL(window.location.href);
+    u.searchParams.set('view', 'day');
+    var day = root.dataset.day || root.dataset.weekStart || '';
+    if (!day) {
+        var d = new Date();
+        day = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    u.searchParams.set('day', day);
+    u.searchParams.set('week', day);
+    window.location.replace(u.toString());
+})();
+document.querySelectorAll('.calendar-toolbar .view-tabs a').forEach(function (a) {
+    if ((a.getAttribute('href') || '').indexOf('view=week') !== -1) {
+        a.addEventListener('click', function () {
+            sessionStorage.setItem('calendar-prefer-week', '1');
+        });
+    }
+});
 window.calendarGoDay = function(day) {
     var u = new URL(window.location.href);
     u.searchParams.set('view', 'day');

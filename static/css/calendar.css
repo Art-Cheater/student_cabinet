@@ -617,3 +617,70 @@
         min-width: var(--cal-min-width);
     }
 }
+
+@media (max-width: 480px) {
+    .calendar-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.65rem;
+    }
+
+    .calendar-toolbar .month-title {
+        font-size: 1.15rem;
+        text-align: center;
+    }
+
+    .calendar-toolbar .view-tabs {
+        display: flex;
+        width: 100%;
+        gap: 0.35rem;
+    }
+
+    .calendar-toolbar .view-tabs a {
+        flex: 1;
+        text-align: center;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 0.35rem;
+    }
+
+    .calendar-toolbar .nav-arrows {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.35rem;
+    }
+
+    .calendar-toolbar .nav-arrows a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .calendar-scroll--week-hint {
+        position: relative;
+    }
+
+    .calendar-scroll--week-hint::before {
+        content: 'Листайте календарь влево и вправо';
+        display: block;
+        font-size: 0.8rem;
+        color: #6C757D;
+        text-align: center;
+        padding: 0.35rem 0.5rem 0.5rem;
+        background: #f8f9fa;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .calendar-grid.month-view .month-day {
+        min-height: 3.5rem;
+        font-size: 0.75rem;
+    }
+
+    .calendar-grid.month-view .month-event {
+        font-size: 0.65rem;
+    }
+}
