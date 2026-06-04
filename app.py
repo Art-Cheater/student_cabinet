@@ -1,497 +1,165 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file, abort, send_from_directory
-import sqlite3
+import json
 import os
-import re
-import secrets
-import requests
-import bcrypt
-from datetime import datetime, timedelta
-from werkzeug.utils import secure_filename
-from werkzeug.security import check_password_hash as werkzeug_check_password_hash
 import subprocess
 import sys
-import json
-import hashlib
-import html as html_lib
+from datetime import date, datetime, timedelta
+from functools import wraps
 from urllib.parse import quote_plus
 
+from dotenv import load_dotenv
+from flask import (
+    Flask, abort, flash, jsonify, redirect, render_template, request,
+    send_file, send_from_directory, session, url_for,
+)
+from werkzeug.utils import secure_filename
+
+load_dotenv()
+
+from auth import format_display_name, login_required, populate_session, redirect_after_login, role_required
+from db.connection import get_db
+from db.queries.buildings import get_building_by_number, list_buildings
+from db.queries.content import list_faq
+from db.queries.groups import (
+    get_group_by_name, get_or_create_group, list_groups, resolve_group_ids_by_names,
+    search_groups,
+)
+from db.queries.office import (
+    create_booking, create_office_slot, delete_office_slot, get_available_slots_for_student,
+    get_teacher_slots, list_slot_bookings, list_student_bookings,
+    list_teacher_slots_summary, student_can_book_slot, student_slot_lesson_overlap,
+    update_booking_status, update_office_slot,
+)
+from db.queries.external_schedule import list_vyatsu_link_statuses
+from db.queries.schedule import (
+    get_group_schedule, get_schedule_events, get_latest_effective_from,
+    get_teacher_lesson_events, list_schedule_teacher_names,
+)
+from db.queries.users import (
+    create_student_user, create_teacher_user, delete_user, email_exists,
+    get_student_profile, get_teacher_profile, get_teacher_public,
+    get_user_by_email, get_user_by_id,
+    count_students_admin, list_students_admin, list_teachers_admin, list_teachers_public,
+    update_student, update_teacher,
+)
+from parsers.vyatsu_teacher_busy import get_teacher_university_events
+from services.calendar_events import (
+    booking_to_event, group_slots_by_date, make_event_key, slot_to_event,
+)
+from db.queries.calendar_meta import (
+    attachment_event_keys_for_lookup,
+    delete_attachment,
+    get_attachment,
+    get_note,
+    get_note_file,
+    insert_attachment,
+    insert_note_file,
+    list_attachments_for_event_keys,
+    list_note_files_for_event,
+    load_user_notes_map,
+    resolve_slot_id_from_event_key,
+    upsert_note,
+    user_can_download_attachment,
+)
+from services.calendar_nav import build_calendar_nav, date_range_for_nav
+from services.vk_news import VK_GROUP_URL, fetch_vk_news, load_cached_news_formatted
+from utils import (
+    check_password, get_course_from_group, hash_card_number, hash_password,
+    is_card_number_valid, is_name_part_valid, is_password_allowed,
+    normalize_building_number, validate_office_room,
+)
+
 app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET_KEY', secrets.token_hex(32))
+app.secret_key = os.getenv('FLASK_SECRET_KEY') or os.getenv('SECRET_KEY') or os.urandom(32).hex()
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-STUDENTS_DB = 'students.db'
-CONTENT_DB = 'content.db'
-SCHEDULE_DB = 'schedule.db'
-VK_GROUP_URL = 'https://vk.com/kollegevyatsu?act=s&id=85060840'
-VK_GROUP_ID = 85060840
-VK_GROUP_DOMAIN = os.getenv('VK_GROUP_DOMAIN', 'kollegevyatsu')
-VK_API_VERSION = '5.199'
-VK_CACHE_TTL_SECONDS = int(os.getenv('VK_CACHE_TTL', '3600'))
-VYATSU_DORMS_URL = 'https://www.vyatsu.ru/studentu-1/obschezhitiya-3/obschezhitiya-vyatgu.html'
-VYATSU_BUILDINGS_URL = 'https://www.vyatsu.ru/studentu-1/pervokursniku/adresa-i-telefonyi-uchebnyih-korpusov-fakul-tetov.html'
-WEEK_DAYS_RU = [
-    'Понедельник',
-    'Вторник',
-    'Среда',
-    'Четверг',
-    'Пятница',
-    'Суббота',
-    'Воскресенье',
-]
-ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
-ADMIN_PASSWORD_HASH = bcrypt.hashpw(
-    os.getenv('ADMIN_PASSWORD', 'admin123').encode(), bcrypt.gensalt()
-).decode()
 UPLOADS_DIR = os.path.join('schedule_parser', 'uploads')
+CALENDAR_ATTACHMENTS_DIR = os.path.join('uploads', 'calendar_attachments')
+CALENDAR_NOTE_FILES_DIR = os.path.join('uploads', 'calendar_note_files')
+os.makedirs(CALENDAR_ATTACHMENTS_DIR, exist_ok=True)
+os.makedirs(CALENDAR_NOTE_FILES_DIR, exist_ok=True)
+
+
+def _event_keys_from_events(events):
+    keys = []
+    for ev in events:
+        k = ev.get('event_key') or ev.get('id')
+        if k:
+            keys.append(k)
+    return keys
+
+
+def _serialize_teacher_files(attachments):
+    seen = set()
+    out = []
+    for a in attachments:
+        if a['id'] in seen:
+            continue
+        seen.add(a['id'])
+        out.append({
+            'id': a['id'],
+            'name': a['original_name'],
+            'url': url_for('api_calendar_attachment_download', attachment_id=a['id']),
+        })
+    return out
+ALLOWED_CALENDAR_EXTENSIONS = {
+    'pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar', 'png', 'jpg', 'jpeg',
+}
+
+
+def _build_teacher_calendar_events(conn, teacher_user_id, date_from, date_to):
+    profile = get_teacher_profile(conn, teacher_user_id)
+    vyatsu_meta = None
+    events = []
+    if profile and profile.get('schedule_teacher_id'):
+        events.extend(get_teacher_lesson_events(
+            conn, profile['schedule_teacher_id'], date_from, date_to,
+        ))
+    slots = get_teacher_slots(conn, teacher_user_id, date_from, date_to)
+    events.extend([slot_to_event(s) for s in slots])
+    if profile:
+        uni_events, vyatsu_meta = get_teacher_university_events(
+            conn, teacher_user_id,
+            profile['last_name'], profile['first_name'], profile.get('middle_name'),
+        )
+        if isinstance(date_from, str):
+            dfrom = date.fromisoformat(date_from[:10])
+        else:
+            dfrom = date_from
+        if isinstance(date_to, str):
+            dto = date.fromisoformat(date_to[:10])
+        else:
+            dto = date_to
+        for ev in uni_events:
+            day = (ev.get('start') or '')[:10]
+            if day and dfrom.isoformat() <= day <= dto.isoformat():
+                if not ev.get('event_key'):
+                    ev['event_key'] = make_event_key(
+                        'university_lesson',
+                        start=ev.get('start', ''),
+                        title=ev.get('title', ''),
+                        fallback_id=ev.get('id'),
+                    )
+                events.append(ev)
+    return events, profile, vyatsu_meta
 PRIVATE_STORAGE_DIR = os.path.join('private_storage')
 PHOTO_UPLOADS_DIR = os.path.join(PRIVATE_STORAGE_DIR, 'student_cards')
 ALLOWED_EXTENSIONS = {'xlsx'}
 ALLOWED_PHOTO_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-VK_TOKEN_FILE = 'vk_token.txt'
-VYATSU_DORMS = [
-    {'name': 'Общежитие №1', 'address': 'Октябрьский пр-кт, д. 113', 'phone': '(8332) 64-45-21', 'image_url': 'https://www.vyatsu.ru/uploads/image/1710/7obschezhitie1_(2).jpg', 'lat': 58.6032080, 'lon': 49.6454819},
-    {'name': 'Общежитие №2', 'address': 'ул. Ломоносова, 12', 'phone': '(8332) 53-08-94', 'image_url': 'https://www.vyatsu.ru/uploads/image/1607/obsch_2.jpg', 'lat': 58.6068444, 'lon': 49.6139144},
-    {'name': 'Общежитие №3', 'address': 'ул. Ломоносова, 12а', 'phone': '(8332) 53-05-81', 'image_url': 'https://www.vyatsu.ru/uploads/image/1607/obsch_3.jpg', 'lat': 58.6068849, 'lon': 49.6148883},
-    {'name': 'Общежитие №4', 'address': 'ул. Ломоносова, 16а, корп. 1', 'phone': '(8332) 53-00-72', 'image_url': 'https://www.vyatsu.ru/uploads/image/1607/obsch_4.jpg', 'lat': 58.6051361, 'lon': 49.6163525},
-    {'name': 'Общежитие №5', 'address': 'ул. Ломоносова, 16а, корп. 2', 'phone': '(8332) 53-04-74', 'image_url': 'https://www.vyatsu.ru/uploads/image/1607/obsch_5.jpg', 'lat': 58.6052361, 'lon': 49.6164525},
-    {'name': 'Общежитие №6', 'address': 'ул. Ленина, 113а', 'phone': '(8332) 67-63-06', 'image_url': 'https://www.vyatsu.ru/uploads/image/1607/6.jpg', 'lat': 58.5903303, 'lon': 49.6815571},
-    {'name': 'Общежитие №7', 'address': 'ул. Ленина, 198/5', 'phone': '(8332) 35-64-00', 'image_url': 'https://www.vyatsu.ru/uploads/image/1710/1obschezhitie2_(1).jpg', 'lat': 58.5672059, 'lon': 49.6881641},
-    {'name': 'Общежитие №8', 'address': 'ул. Свободы, 133', 'phone': '(8332) 37-37-40', 'image_url': 'https://www.vyatsu.ru/uploads/image/1710/8obschezhitie2.jpg', 'lat': 58.5904838, 'lon': 49.6770740},
+WEEK_DAYS_RU = [
+    'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье',
 ]
+VYATSU_DORMS_URL = 'https://www.vyatsu.ru/studentu-1/obschezhitiya-3/obschezhitiya-vyatgu.html'
+VYATSU_BUILDINGS_URL = (
+    'https://www.vyatsu.ru/studentu-1/pervokursniku/'
+    'adresa-i-telefonyi-uchebnyih-korpusov-fakul-tetov.html'
+)
 
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(PHOTO_UPLOADS_DIR, exist_ok=True)
-VYATSU_BUILDINGS = [
-    {'name': 'Корпус №1', 'address': 'ул. Московская, д. 36', 'phone': '(8332) 70-82-67', 'image_url': 'https://www.vyatsu.ru/uploads/image/2411/img_9401.jpg', 'lat': 58.6032080, 'lon': 49.6454819},
-    {'name': 'Корпус №2', 'address': 'ул. Московская, д. 39', 'phone': '(8332) 70-82-27', 'image_url': 'https://www.vyatsu.ru/uploads/image/2411/img_9369.jpg', 'lat': 58.6032080, 'lon': 49.6454819},
-    {'name': 'Корпус №3', 'address': 'ул. Московская, д. 29', 'phone': '(8332) 64-56-27', 'image_url': 'https://www.vyatsu.ru/uploads/image/1308/3_korp_m.jpg', 'lat': 58.6029204, 'lon': 49.6319040},
-    {'name': 'Корпус №4', 'address': 'ул. Защитников Отечества, д. 76', 'phone': '(8332) 64-55-29', 'image_url': 'https://www.vyatsu.ru/uploads/image/2411/img_1168.jpg', 'lat': 58.5893228, 'lon': 49.6657860},
-    {'name': 'Корпус №5 (Колледж)', 'address': 'ул. Владимирская, д. 55', 'phone': '(8332) 64-26-24', 'image_url': 'https://www.vyatsu.ru/uploads/image/1708/img_5209.jpg', 'lat': 58.6133600, 'lon': 49.6662800},
-    {'name': 'Корпус №6', 'address': 'Студенческий проезд, д. 9', 'phone': '(8332) 53-17-50', 'image_url': 'https://www.vyatsu.ru/uploads/image/2411/img_1206.jpg', 'lat': 58.5995466, 'lon': 49.6181253},
-    {'name': 'Корпус №8', 'address': 'Студенческий проезд, д. 11', 'phone': '(8332) 53-04-45', 'image_url': 'https://www.vyatsu.ru/uploads/image/2411/img_1198.jpg', 'lat': 58.5995466, 'lon': 49.6181253},
-    {'name': 'Корпус №10', 'address': 'ул. Ломоносова, д. 18а', 'phone': '(8332) 53-04-75', 'image_url': 'https://www.vyatsu.ru/uploads/image/1604/10korpus_(3).jpg', 'lat': 58.6123792, 'lon': 49.6033178},
-    {'name': 'Корпус №13', 'address': 'ул. Красноармейская, д. 26', 'phone': '(8332) 37-27-48', 'image_url': 'https://www.vyatsu.ru/uploads/image/2411/img_1106.jpg', 'lat': 58.5919495, 'lon': 49.6851055},
-    {'name': 'Корпус №14', 'address': 'ул. Ленина, д. 111', 'phone': '(8332) 67-86-20', 'image_url': 'https://www.vyatsu.ru/uploads/image/2411/img_1113.jpg', 'lat': 58.5907946, 'lon': 49.6807405},
-    {'name': 'Корпус №15', 'address': 'ул. Ленина, д. 198', 'phone': '(8332) 35-62-68', 'image_url': 'https://www.vyatsu.ru/uploads/image/2411/img_1393.jpg', 'lat': 58.5660900, 'lon': 49.6865449},
-    {'name': 'Корпус №19', 'address': 'ул. Орловская, д. 12', 'phone': '(8332) 70-81-18', 'image_url': 'https://www.vyatsu.ru/uploads/image/2411/img_9638.jpg', 'lat': 58.5959175, 'lon': 49.6668991},
-]
+os.makedirs(CALENDAR_ATTACHMENTS_DIR, exist_ok=True)
 
-def init_students_db():
-    conn = sqlite3.connect(STUDENTS_DB)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            last_name TEXT NOT NULL,
-            first_name TEXT NOT NULL,
-            middle_name TEXT,
-            group_name TEXT,
-            student_id TEXT,
-            course INTEGER
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS student_cards (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER UNIQUE NOT NULL,
-            last_name TEXT NOT NULL,
-            first_name TEXT NOT NULL,
-            middle_name TEXT,
-            card_number_hash TEXT UNIQUE NOT NULL,
-            card_number_last4 TEXT,
-            photo_path TEXT,
-            face_photo_path TEXT,
-            study_form TEXT,
-            issue_date TEXT,
-            course_number INTEGER,
-            verification_signature TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
-    ''')
-    # Миграции для старых схем students.db
-    for sql in (
-        "ALTER TABLE student_cards ADD COLUMN face_photo_path TEXT",
-        "ALTER TABLE student_cards ADD COLUMN verification_signature TEXT",
-        "ALTER TABLE student_cards ADD COLUMN card_number_hash TEXT",
-        "ALTER TABLE student_cards ADD COLUMN card_number_last4 TEXT",
-    ):
-        try:
-            cursor.execute(sql)
-        except sqlite3.OperationalError:
-            pass
-    # Миграция users: full_name -> last_name / first_name / middle_name.
-    user_columns = [row[1] for row in cursor.execute("PRAGMA table_info(users)").fetchall()]
-    needs_users_rebuild = 'full_name' in user_columns
-    if needs_users_rebuild:
-        old_users = cursor.execute('''
-            SELECT id, email, password_hash, full_name, group_name, student_id, course
-            FROM users
-        ''').fetchall()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users_new (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                last_name TEXT NOT NULL,
-                first_name TEXT NOT NULL,
-                middle_name TEXT,
-                group_name TEXT,
-                student_id TEXT,
-                course INTEGER
-            )
-        ''')
-        for row in old_users:
-            last_name, first_name, middle_name = split_full_name(row[3])
-            cursor.execute('''
-                INSERT INTO users_new
-                (id, email, password_hash, last_name, first_name, middle_name, group_name, student_id, course)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                row[0], row[1], row[2], last_name, first_name, middle_name, row[4], row[5], row[6]
-            ))
-        cursor.execute('DROP TABLE users')
-        cursor.execute('ALTER TABLE users_new RENAME TO users')
-    else:
-        for sql in (
-            "ALTER TABLE users ADD COLUMN last_name TEXT",
-            "ALTER TABLE users ADD COLUMN first_name TEXT",
-            "ALTER TABLE users ADD COLUMN middle_name TEXT",
-        ):
-            try:
-                cursor.execute(sql)
-            except sqlite3.OperationalError:
-                pass
-    conn.commit()
-    conn.close()
-
-def init_content_db():
-    conn = sqlite3.connect(CONTENT_DB)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS news (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT,
-            content TEXT,
-            date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS vk_news_cache (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            post_id INTEGER UNIQUE,
-            title TEXT,
-            summary TEXT,
-            post_date TEXT,
-            post_url TEXT,
-            image_url TEXT,
-            fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS faq (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            question TEXT,
-            answer TEXT,
-            source_url TEXT
-        )
-    ''')
-    try:
-        cursor.execute("ALTER TABLE faq ADD COLUMN source_url TEXT")
-    except sqlite3.OperationalError:
-        pass
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS appointments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            teacher_name TEXT,
-            date TEXT,
-            time TEXT,
-            reason TEXT,
-            status TEXT DEFAULT 'pending'
-        )
-    ''')
-    faqs = [
-        (
-            "Как поступить в ВятГУ?",
-            "Подробные правила приема, сроки и перечень документов смотрите на официальной странице приемной кампании.",
-            "https://www.vyatsu.ru/abitur/"
-        ),
-        (
-            "Где найти расписание занятий?",
-            "Расписание и учебные сервисы доступны в личном кабинете и в разделах для обучающихся на официальном сайте.",
-            "https://www.vyatsu.ru/studentu-1/"
-        ),
-        (
-            "Где посмотреть адреса и телефоны учебных корпусов?",
-            "Актуальный список корпусов, адресов и телефонов размещен на официальной странице университета.",
-            "https://www.vyatsu.ru/studentu-1/pervokursniku/adresa-i-telefonyi-uchebnyih-korpusov-fakul-tetov.html"
-        ),
-        (
-            "Где посмотреть информацию об общежитиях?",
-            "Информация по общежитиям, адресам и контактам доступна на официальной странице ВятГУ.",
-            "https://www.vyatsu.ru/studentu-1/obschezhitiya-3/obschezhitiya-vyatgu.html"
-        ),
-        (
-            "Куда обращаться по вопросам обучения и сервисов студента?",
-            "Контакты подразделений и общие каналы связи опубликованы на странице контактов ВятГУ.",
-            "https://www.vyatsu.ru/kontaktyi.html"
-        ),
-        (
-            "Где смотреть официальные новости университета?",
-            "Официальные новости и объявления публикуются на сайте ВятГУ в разделе новостей.",
-            "https://www.vyatsu.ru/internet-gazeta/"
-        ),
-    ]
-    for q, a, src in faqs:
-        exists = cursor.execute("SELECT id FROM faq WHERE question = ?", (q,)).fetchone()
-        if exists:
-            cursor.execute(
-                "UPDATE faq SET answer = ?, source_url = ? WHERE id = ?",
-                (a, src, exists[0])
-            )
-        else:
-            cursor.execute(
-                "INSERT INTO faq (question, answer, source_url) VALUES (?, ?, ?)",
-                (q, a, src)
-            )
-    conn.commit()
-    conn.close()
-
-def init_user_db():
-    # Совместимость со старыми тестами/импортами.
-    init_students_db()
-    init_content_db()
-    init_schedule_db()
-
-
-def init_schedule_db():
-    """Таблицы расписания в schedule.db (на новом сервере файла может не быть)."""
-    from schedule_parser.schedule_schema import apply_schedule_schema
-
-    conn = sqlite3.connect(SCHEDULE_DB)
-    try:
-        apply_schedule_schema(conn)
-    finally:
-        conn.close()
-
-
-def get_students_db():
-    conn = sqlite3.connect(STUDENTS_DB)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def get_content_db():
-    conn = sqlite3.connect(CONTENT_DB)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def get_schedule_db():
-    conn = sqlite3.connect(SCHEDULE_DB)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def get_course_from_group(group_name):
-    numbers = re.findall(r'\d+', group_name)
-    for num in numbers:
-        if len(num) >= 2:
-            first_digit = int(str(num)[0])
-            if 1 <= first_digit <= 4:
-                return first_digit
-    return 1
-
-def hash_password(password):
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
-def is_password_allowed(password):
-    if not password:
-        return False
-    return re.fullmatch(r'[A-Za-z0-9]+', password) is not None
-
-def is_name_part_valid(value, allow_empty=False):
-    value = (value or '').strip()
-    if allow_empty and not value:
-        return True
-    # Разрешаем только буквы (кириллица/латиница), пробел и дефис.
-    return re.fullmatch(r"[A-Za-zА-Яа-яЁё\- ]+", value) is not None
-
-
-def split_full_name(full_name):
-    parts = [part for part in (full_name or '').split() if part]
-    if not parts:
-        return 'Неизвестно', 'Студент', None
-    if len(parts) == 1:
-        return parts[0], parts[0], None
-    if len(parts) == 2:
-        return parts[0], parts[1], None
-    return parts[0], parts[1], ' '.join(parts[2:])
-
-
-def format_user_display_name(user_row):
-    if not user_row:
-        return 'Пользователь'
-    last_name = (row_value(user_row, 'last_name', '') or '').strip()
-    first_name = (row_value(user_row, 'first_name', '') or '').strip()
-    middle_name = (row_value(user_row, 'middle_name', '') or '').strip()
-    full = ' '.join(part for part in (first_name, middle_name, last_name) if part).strip()
-    return full or 'Пользователь'
-
-def is_card_number_valid(card_number):
-    return re.fullmatch(r'\d+', (card_number or '').strip()) is not None
-
-def row_value(row, key, default=None):
-    if not row:
-        return default
-    try:
-        return row[key]
-    except Exception:
-        return default
-
-def extract_building_from_classroom(classroom):
-    value = (classroom or '').strip()
-    match = re.match(r'^(\d+)\s*[-–]', value)
-    return match.group(1) if match else None
-
-def normalize_building_number(value):
-    value = (value or '').strip()
-    match = re.search(r'(\d+)', value)
-    return match.group(1) if match else ''
-
-def hash_card_number(card_number):
-    return hashlib.sha256((card_number or '').strip().encode('utf-8')).hexdigest()
-
-def fetch_vk_news_from_public_page(limit=10):
-    """Парсинг публичного виджета VK (без токена). На IP хостингов ВК часто отдаёт заглушку — тогда нужен VK_ACCESS_TOKEN."""
-    headers = {
-        'User-Agent': (
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-        ),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.5',
-        'Referer': 'https://vk.com/',
-        'Connection': 'keep-alive',
-    }
-    widget_url = (
-        'https://vk.com/widget_community.php'
-        '?app=0&width=320px&_ver=1'
-        f'&gid={VK_GROUP_ID}&mode=4&color1=FFFFFF&color2=2B587A&color3=5B7FA6'
-    )
-    page_html = None
-    last_err = None
-    for url in (widget_url, widget_url.replace('https://vk.com/', 'https://m.vk.com/')):
-        try:
-            resp = requests.get(url, timeout=25, headers=headers)
-            resp.raise_for_status()
-            resp.encoding = 'cp1251'
-            page_html = resp.text
-            if page_html and 'wpt-' in page_html:
-                break
-            last_err = 'VK вернул страницу без постов (возможна блокировка IP хостинга).'
-        except Exception as exc:
-            last_err = str(exc)
-            continue
-    if not page_html:
-        return [], last_err or 'Не удалось получить VK widget.'
-
-    post_ids = []
-    # Основной источник ID постов в виджете сейчас.
-    for match in re.findall(r'id="wpt-(-?\d+_\d+)"', page_html):
-        if match not in post_ids:
-            post_ids.append(match)
-        if len(post_ids) >= max(limit * 4, 30):
-            break
-    # Фолбэк для старой разметки.
-    for match in re.findall(r'data-post-id="(-?\d+_\d+)"', page_html):
-        if match not in post_ids:
-            post_ids.append(match)
-        if len(post_ids) >= max(limit * 5, 50):
-            break
-
-    items = []
-    used_image_urls = set()
-    for raw_id in post_ids:
-        owner_id, post_id = raw_id.split('_', 1)
-        post_link = f'https://vk.com/wall{owner_id}_{post_id}'
-
-        # Берем строго HTML-блок конкретного поста, чтобы не путать контент соседних карточек.
-        # В widget id блока обычно без ведущего минуса: wpt-85060840_1234
-        marker = f'id="wpt-{raw_id.lstrip("-")}"'
-        start = page_html.find(marker)
-        if start < 0:
-            continue
-        next_start = page_html.find('id="wpt-', start + len(marker))
-        if next_start < 0:
-            next_start = min(len(page_html), start + 60000)
-        post_block = page_html[start:next_start]
-
-        date_zone_start = max(0, start - 1200)
-        date_zone = page_html[date_zone_start:start + 500]
-        date_match = re.search(rf'href="/wall{re.escape(raw_id)}"[^>]*>(.*?)</a>', date_zone, re.S)
-        date_text = html_lib.unescape(re.sub(r'<[^>]+>', '', date_match.group(1))).strip() if date_match else ''
-
-        txt_match = re.search(r'class="wall_post_text"[^>]*>(.*?)</div>', post_block, re.S)
-        text_raw = txt_match.group(1) if txt_match else ''
-        text_clean = re.sub(r'<br\s*/?>', '\n', text_raw, flags=re.I)
-        text_clean = re.sub(r'<[^>]+>', ' ', text_clean)
-        text_clean = html_lib.unescape(text_clean)
-        text_clean = re.sub(r'\s+', ' ', text_clean).strip()
-        if not text_clean:
-            continue
-
-        img_match = re.search(r'https://[^"\']+\.(?:jpg|jpeg|png|webp)(?:\?[^"\']*)?', post_block, re.I)
-        image_url = img_match.group(0) if img_match else None
-
-        # По требованию: только посты с фото.
-        if not image_url:
-            continue
-        if image_url in used_image_urls:
-            continue
-
-        items.append({
-            'title': text_clean[:140] or 'Новость колледжа',
-            'date': date_text or datetime.now().strftime('%d.%m.%Y %H:%M'),
-            'summary': text_clean if len(text_clean) <= 700 else text_clean[:700].rstrip() + '...',
-            'url': post_link,
-            'image_url': image_url,
-        })
-        used_image_urls.add(image_url)
-
-        if len(items) >= limit:
-            break
-
-    if not items:
-        return [], 'Не удалось извлечь новости из VK widget.'
-    return items[:limit], None
-
-def check_password(password, hashed):
-    if not hashed:
-        return False
-
-    # Основной путь: bcrypt.
-    try:
-        if bcrypt.checkpw(password.encode(), hashed.encode()):
-            return True
-    except (ValueError, TypeError, AttributeError):
-        # Поддержка старых форматов ниже.
-        pass
-
-    # Обратная совместимость со старыми хэшами werkzeug.
-    try:
-        if werkzeug_check_password_hash(hashed, password):
-            return True
-    except (ValueError, TypeError):
-        pass
-
-    # Последний fallback для очень старых plain-text записей.
-    return secrets.compare_digest(
-        password.encode('utf-8', errors='surrogatepass'),
-        str(hashed).encode('utf-8', errors='surrogatepass'),
-    )
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -510,232 +178,103 @@ def save_private_student_photo(upload, user_id, prefix):
     if not filename:
         return None, 'Некорректное имя файла.'
     ext = filename.rsplit('.', 1)[1].lower()
-    os.makedirs(PHOTO_UPLOADS_DIR, exist_ok=True)
     stored_rel_path = os.path.join(
         'student_cards',
-        f'{prefix}_{user_id}_{datetime.now().strftime("%Y%m%d_%H%M%S_%f")}.{ext}'
+        f'{prefix}_{user_id}_{datetime.now().strftime("%Y%m%d_%H%M%S_%f")}.{ext}',
     )
     abs_path = os.path.join(PRIVATE_STORAGE_DIR, stored_rel_path)
     upload.save(abs_path)
     return stored_rel_path, None
 
-def get_vk_access_token():
-    env_token = os.getenv('VK_ACCESS_TOKEN', '').strip()
-    if env_token:
-        return env_token
 
-    if os.path.exists(VK_TOKEN_FILE):
-        try:
-            with open(VK_TOKEN_FILE, 'r', encoding='utf-8') as file:
-                for line in file:
-                    candidate = line.strip()
-                    if not candidate or candidate.startswith('#'):
-                        continue
-                    return candidate
-        except OSError:
-            return ''
-
-    return ''
-
-def update_schedule_from_excel(excel_path):
-    parser_script = os.path.join('schedule_parser', 'parse_schedule.py')
-    if not os.path.exists(parser_script):
+def update_schedule_from_excel(excel_path, effective_from=None):
+    script = os.path.join('schedule_parser', 'parse_schedule.py')
+    if not os.path.exists(script):
         return False, 'Файл парсера расписания не найден.'
-
+    cmd = [sys.executable, script, excel_path]
+    if effective_from:
+        if isinstance(effective_from, date):
+            ef = effective_from.strftime('%d.%m.%Y')
+        else:
+            ef = effective_from
+        cmd.extend(['--effective-from', ef])
     try:
-        result = subprocess.run(
-            [sys.executable, parser_script, excel_path],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        output = (result.stdout or '').strip()
-        return True, output or 'Расписание успешно обновлено.'
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, env=os.environ.copy())
+        return True, (result.stdout or '').strip() or 'Расписание успешно обновлено.'
     except subprocess.CalledProcessError as exc:
-        error_output = (exc.stderr or exc.stdout or '').strip()
-        return False, error_output or 'Ошибка запуска парсера расписания.'
+        return False, (exc.stderr or exc.stdout or '').strip() or 'Ошибка парсера.'
 
-def fetch_vk_news(limit=10):
-    vk_access_token = get_vk_access_token()
-
-    try:
-        params = {
-            'domain': VK_GROUP_DOMAIN,
-            'count': limit,
-            'filter': 'owner',
-            'v': VK_API_VERSION,
-        }
-        if vk_access_token:
-            params['access_token'] = vk_access_token
-
-        response = requests.get(
-            'https://api.vk.com/method/wall.get',
-            params=params,
-            timeout=10
-        )
-        response.raise_for_status()
-    except Exception as exc:
-        scraped, scraped_err = fetch_vk_news_from_public_page(limit=limit)
-        if scraped:
-            _save_news_to_cache(scraped)
-            return scraped, 'Лента загружена из публичной страницы VK (без токена).'
-        return [], f'Не удалось загрузить новости из ВК: {scraped_err or exc}.'
-
-    data = response.json()
-    if 'error' in data:
-        error = data.get('error', {})
-        error_code = error.get('error_code')
-        message = error.get('error_msg', 'неизвестная ошибка VK API')
-        if error_code == 5 or 'expired' in message.lower():
-            scraped, scraped_err = fetch_vk_news_from_public_page(limit=limit)
-            if scraped:
-                _save_news_to_cache(scraped)
-                return scraped, 'Лента загружена из публичной страницы VK (без токена).'
-            return [], (
-                f'Не удалось получить новости ВК: {scraped_err or message}. '
-                'Новости не будут показаны, чтобы не выводить устаревшие данные.'
-            )
-        if error_code == 15:
-            return [], 'VK отклонил доступ к стене группы.'
-        return [], f'VK API вернул ошибку: {message}.'
-
-    items = data.get('response', {}).get('items', [])
-    news_items = []
-
-    for post in items:
-        text = (post.get('text') or '').strip()
-        if not text:
-            continue
-
-        lines = [line.strip() for line in text.splitlines() if line.strip()]
-        title = lines[0][:140] if lines else 'Новость колледжа'
-        summary = text if len(text) <= 700 else text[:700].rstrip() + '...'
-
-        post_date = datetime.fromtimestamp(post.get('date', 0)).strftime('%d.%m.%Y %H:%M')
-        post_id = post.get('id')
-        if post_id is None:
-            continue
-
-        post_url = f'https://vk.com/{VK_GROUP_DOMAIN}?w=wall-{abs(post.get("owner_id", 0))}_{post_id}'
-        image_url = None
-        for attachment in post.get('attachments', []):
-            if attachment.get('type') != 'photo':
-                continue
-            sizes = attachment.get('photo', {}).get('sizes', [])
-            if sizes:
-                image_url = sizes[-1].get('url')
-                if image_url:
-                    break
-
-        if not image_url:
-            continue
-
-        news_items.append({
-            'title': title,
-            'date': post_date,
-            'summary': summary,
-            'url': post_url,
-            'image_url': image_url,
-        })
-
-    if not news_items:
-        return [], 'В ВК не найдено публикаций с фото.'
-
-    _save_news_to_cache(news_items)
-    return news_items, None
-
-
-def _save_news_to_cache(news_items):
-    try:
-        with get_content_db() as conn:
-            # Храним актуальный снимок ленты, чтобы не копились старые дубли.
-            conn.execute('DELETE FROM vk_news_cache')
-            for item in news_items:
-                # Стабильный ключ, чтобы не терять старые записи между перезапусками.
-                post_id = int.from_bytes(item['url'].encode('utf-8'), 'little', signed=False) % (2**63 - 1)
-                conn.execute('''
-                    INSERT OR REPLACE INTO vk_news_cache
-                    (post_id, title, summary, post_date, post_url, image_url, fetched_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    post_id,
-                    item['title'],
-                    item['summary'],
-                    item['date'],
-                    item['url'],
-                    item['image_url'],
-                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                ))
-            # Удерживаем разумный размер кэша и сохраняем старые новости для fallback.
-            conn.execute('''
-                DELETE FROM vk_news_cache
-                WHERE id NOT IN (
-                    SELECT id
-                    FROM vk_news_cache
-                    ORDER BY fetched_at DESC, id DESC
-                    LIMIT 200
-                )
-            ''')
-            conn.commit()
-    except Exception:
-        pass
-
-
-def _load_cached_news():
-    try:
-        with get_content_db() as conn:
-            rows = conn.execute(
-                'SELECT title, summary, post_date, post_url, image_url FROM vk_news_cache ORDER BY id DESC'
-            ).fetchall()
-            return [{
-                'title': r['title'],
-                'date': r['post_date'],
-                'summary': r['summary'],
-                'url': r['post_url'],
-                'image_url': r['image_url'],
-            } for r in rows]
-    except Exception:
-        return []
-
-# Инициализируем БД и применяем миграции к существующим.
-init_students_db()
-init_content_db()
-init_schedule_db()
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    news_preview = []
+    news_error = None
+    today_events = []
+    try:
+        news_preview, news_error = fetch_vk_news(limit=2)
+        if not news_preview:
+            news_preview = load_cached_news_formatted(2)
+    except Exception:
+        news_preview = load_cached_news_formatted(2)
+    if session.get('user_id') and session.get('role') == 'student':
+        group = session.get('group')
+        if group:
+            try:
+                with get_db() as conn:
+                    today = date.today().isoformat()
+                    events = get_schedule_events(conn, group, today, today)
+                    today_events = sorted(events, key=lambda e: e.get('start', ''))[:2]
+            except Exception:
+                today_events = []
+    return render_template(
+        'index.html',
+        news_preview=news_preview[:2],
+        news_error=news_error,
+        news_url=VK_GROUP_URL,
+        user=session if session.get('user_id') else None,
+        today_events=today_events,
+    )
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        flash('Саморегистрация временно отключена. Обратитесь к администратору.')
+        flash('Саморегистрация отключена. Обратитесь к администратору.')
         return redirect(url_for('login'))
-    return render_template('register.html', groups=[], registration_disabled=True)
+    return render_template('register.html', registration_disabled=True)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form['email']
+        email = request.form['email'].strip()
         password = request.form['password']
         if not is_password_allowed(password):
-            flash('Пароль может содержать только английские буквы и цифры')
+            flash('Пароль: только латиница и цифры.')
             return render_template('login.html')
-        with get_students_db() as conn:
-            user = conn.execute('SELECT * FROM users WHERE email = ?', 
-                              (email,)).fetchone()
-            if user and check_password(password, user['password_hash']):
-                display_name = format_user_display_name(user)
-                session['user_id'] = user['id']
-                session['user_name'] = display_name
-                session['group'] = user['group_name']
-                session['student_id'] = user['student_id']
-                session['course'] = user['course']
-                flash(f'Добро пожаловать, {display_name}!')
-                return redirect(url_for('dashboard'))
-            else:
-                flash('Неверный email или пароль')
+        try:
+            with get_db() as conn:
+                user = get_user_by_email(conn, email)
+                if user and check_password(password, user['password_hash']):
+                    profile = None
+                    group_name = None
+                    if user['role_code'] == 'student':
+                        profile = get_student_profile(conn, user['id'])
+                        group_name = profile.get('group_name') if profile else None
+                    populate_session({
+                        **user,
+                        'group_id': profile.get('group_id') if profile else None,
+                        'student_id': profile.get('student_id') if profile else None,
+                        'course': profile.get('course') if profile else None,
+                    }, group_name)
+                    flash(f'Добро пожаловать, {session["user_name"]}!')
+                    return redirect_after_login(user['role_code'])
+        except Exception as exc:
+            flash(f'Ошибка входа: {exc}')
+            return render_template('login.html')
+        flash('Неверный email или пароль')
     return render_template('login.html')
+
 
 @app.route('/logout')
 def logout():
@@ -743,456 +282,930 @@ def logout():
     flash('Вы вышли из системы')
     return redirect(url_for('index'))
 
-@app.route('/dashboard')
+
+@app.route('/dashboard', methods=['GET', 'POST'])
+@login_required
+@role_required('student')
 def dashboard():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('dashboard.html', user=session)
+    if request.method == 'POST' and request.form.get('action') == 'upload_photo':
+        face_photo = request.files.get('face_photo')
+        path, err = save_private_student_photo(face_photo, session['user_id'], 'face')
+        if err:
+            flash(err)
+        elif path:
+            with get_db() as conn:
+                conn.execute(
+                    'UPDATE student_profiles SET face_photo_path = %s WHERE user_id = %s',
+                    (path, session['user_id']),
+                )
+            flash('Фото обновлено.')
+        else:
+            flash('Файл не выбран.')
+        return redirect(url_for('dashboard'))
+
+    with get_db() as conn:
+        user = get_student_profile(conn, session['user_id'])
+    if not user or not user.get('card_number_hash'):
+        return render_template('dashboard.html', card=None, user=session, profile=None)
+    fio = ' '.join(filter(None, [
+        user.get('last_name'), user.get('first_name'), user.get('middle_name'),
+    ])).strip()
+    masked = f'****{user["card_number_last4"]}' if user.get('card_number_last4') else 'скрыт'
+    qr_payload = {
+        'type': 'vyatsu_student_card',
+        'student_id': user.get('student_id', ''),
+        'fio': fio,
+        'group': user.get('group_name', ''),
+        'course': user.get('course_number'),
+        'study_form': user.get('study_form'),
+        'issue_date': str(user.get('issue_date') or ''),
+        'number': masked,
+        'user_id': user['id'],
+    }
+    qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=' + quote_plus(
+        json.dumps(qr_payload, ensure_ascii=False)
+    )
+    return render_template(
+        'dashboard.html',
+        card=user,
+        profile=user,
+        fio=fio,
+        masked_number=masked,
+        qr_url=qr_url,
+        user=session,
+    )
+
 
 @app.route('/schedule')
-def schedule():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
+@login_required
+def schedule_page():
+    role = session.get('role')
+    if role == 'teacher':
+        return redirect(url_for('teacher_schedule'))
+    if role != 'student':
+        flash('Расписание доступно студентам и преподавателям.')
+        return redirect(url_for('index'))
+
     group = session.get('group')
-    schedule_data = []
-    filter_mode = request.args.get('filter', 'week')
-    if filter_mode not in ('week', 'today', 'tomorrow'):
-        filter_mode = 'week'
-    
+    default_week = None
     try:
-        with get_schedule_db() as conn:
-            rows = conn.execute('''
-                SELECT 
-                    l.day_name as day_of_week,
-                    l.time_start as start_time,
-                    l.time_end as end_time,
-                    l.subject as discipline,
-                    l.lesson_type,
-                    t.name as teacher,
-                    c.name as classroom,
-                    l.lesson_number
-                FROM lessons l
-                JOIN groups g ON l.group_id = g.id
-                LEFT JOIN teachers t ON l.teacher_id = t.id
-                LEFT JOIN classrooms c ON l.classroom_id = c.id
-                WHERE g.name = ?
-                ORDER BY 
-                    CASE l.day_name
-                        WHEN 'Понедельник' THEN 1
-                        WHEN 'Вторник' THEN 2
-                        WHEN 'Среда' THEN 3
-                        WHEN 'Четверг' THEN 4
-                        WHEN 'Пятница' THEN 5
-                        WHEN 'Суббота' THEN 6
-                        ELSE 7
-                    END,
-                    l.lesson_number
-            ''', (group,)).fetchall()
-            schedule_data = [dict(row) for row in rows]
-            for item in schedule_data:
-                item['building_number'] = extract_building_from_classroom(item.get('classroom'))
-    except Exception as e:
-        print(f"Ошибка получения расписания: {e}")
+        with get_db() as conn:
+            ef = get_latest_effective_from(conn)
+            if ef:
+                default_week = ef.isoformat() if hasattr(ef, 'isoformat') else str(ef)
+    except Exception:
+        pass
+    week_arg = request.args.get('week') or default_week
+    cal = build_calendar_nav(
+        request.args.get('view', 'week'),
+        week_arg,
+        request.args.get('day'),
+        request.args.get('month'),
+    )
+    calendar_hint = None
+    if not group:
+        calendar_hint = 'Группа не указана в профиле. Обратитесь к администратору.'
+    events = []
+    if group:
+        dfrom, dto = date_range_for_nav(cal)
+        try:
+            with get_db() as conn:
+                events = get_schedule_events(conn, group, dfrom, dto)
+                bookings = list_student_bookings(conn, session['user_id'])
+                for b in bookings:
+                    if b['status'] != 'rejected':
+                        events.append(booking_to_event(b))
+        except Exception as exc:
+            flash(f'Ошибка расписания: {exc}')
 
-    target_day = None
-    if filter_mode == 'today':
-        target_day = WEEK_DAYS_RU[datetime.now().weekday()]
-    elif filter_mode == 'tomorrow':
-        target_day = WEEK_DAYS_RU[(datetime.now() + timedelta(days=1)).weekday()]
-
-    if target_day:
-        schedule_data = [item for item in schedule_data if item['day_of_week'] == target_day]
+    notes_map = {}
+    if events:
+        try:
+            with get_db() as conn:
+                notes_map = load_user_notes_map(
+                    conn, session['user_id'], _event_keys_from_events(events),
+                )
+        except Exception:
+            pass
 
     return render_template(
         'schedule.html',
-        schedule=schedule_data,
         group=group,
-        filter_mode=filter_mode,
+        cal=cal,
+        events=events,
+        notes_map=notes_map,
+        calendar_hint=calendar_hint,
+        calendar_base_url='schedule_page',
+        extra_params={},
+        show_calendar_legend=True,
     )
+
+
+@app.route('/api/schedule/events')
+@login_required
+@role_required('student')
+def api_schedule_events():
+    group = session.get('group')
+    date_from = request.args.get('from', date.today().isoformat())
+    date_to = request.args.get('to', (date.today() + timedelta(days=7)).isoformat())
+    with get_db() as conn:
+        events = get_schedule_events(conn, group, date_from, date_to)
+    return jsonify(events)
+
+
+@app.route('/teacher/dashboard')
+@login_required
+@role_required('teacher')
+def teacher_dashboard():
+    with get_db() as conn:
+        profile = get_teacher_profile(conn, session['user_id'])
+    return render_template(
+        'teacher/dashboard.html',
+        profile=dict(profile) if profile else None,
+        user=session,
+    )
+
+
+@app.route('/teacher/slots')
+@login_required
+@role_required('teacher')
+def teacher_slots():
+    selected_slot = request.args.get('slot', type=int)
+    with get_db() as conn:
+        slots = list_teacher_slots_summary(conn, session['user_id'])
+        bookings = []
+        if selected_slot:
+            bookings = list_slot_bookings(conn, selected_slot)
+    return render_template(
+        'teacher/slots.html',
+        slots=slots,
+        bookings=bookings,
+        selected_slot=selected_slot,
+        user=session,
+    )
+
+
+@app.route('/teacher/schedule')
+@login_required
+@role_required('teacher')
+def teacher_schedule():
+    cal = build_calendar_nav(
+        request.args.get('view', 'week'),
+        request.args.get('week'),
+        request.args.get('day'),
+        request.args.get('month'),
+    )
+    dfrom, dto = date_range_for_nav(cal)
+    vyatsu_status = None
+    notes_map = {}
+    with get_db() as conn:
+        events, profile, vyatsu_meta = _build_teacher_calendar_events(
+            conn, session['user_id'], dfrom, dto,
+        )
+        groups = list_groups(conn)
+        if vyatsu_meta:
+            vyatsu_status = vyatsu_meta.get('link_status')
+        if events:
+            notes_map = load_user_notes_map(
+                conn, session['user_id'], _event_keys_from_events(events),
+            )
+    return render_template(
+        'teacher/schedule.html',
+        cal=cal,
+        events=events,
+        notes_map=notes_map,
+        groups=groups,
+        calendar_base_url='teacher_schedule',
+        extra_params={},
+        user=session,
+        show_calendar_legend=True,
+        vyatsu_status=vyatsu_status,
+    )
+
+
+@app.route('/api/teacher/slots', methods=['GET', 'POST'])
+@login_required
+@role_required('teacher')
+def api_teacher_slots():
+    if request.method == 'GET':
+        date_from = request.args.get('from', date.today().isoformat())
+        date_to = request.args.get('to', (date.today() + timedelta(days=14)).isoformat())
+        with get_db() as conn:
+            slots = get_teacher_slots(conn, session['user_id'], date_from, date_to)
+        return jsonify([slot_to_event(s) for s in slots])
+
+    data = request.get_json(silent=True) or request.form
+    room = (data.get('room_display') or '').strip()
+    if not validate_office_room(room):
+        return jsonify({'error': 'Кабинет в формате 5-104'}), 400
+    audience = data.get('audience_type', 'anyone')
+    group_ids = []
+    raw_ids = data.get('group_ids') or []
+    if isinstance(raw_ids, str):
+        group_ids = [int(x) for x in raw_ids.split(',') if str(x).strip().isdigit()]
+    else:
+        group_ids = [int(x) for x in raw_ids if str(x).isdigit()]
+    group_names = data.get('group_names') or []
+    if isinstance(group_names, str):
+        group_names = [group_names] if group_names.strip() else []
+    try:
+        with get_db() as conn:
+            if group_names and not group_ids:
+                group_ids = resolve_group_ids_by_names(conn, group_names)
+    except Exception:
+        pass
+    if audience == 'one_group' and len(group_ids) != 1:
+        return jsonify({'error': 'Выберите одну группу'}), 400
+    if audience == 'multi_group' and not group_ids:
+        return jsonify({'error': 'Выберите группы'}), 400
+    try:
+        with get_db() as conn:
+            slot_date = data.get('slot_date')
+            time_start = data.get('time_start')
+            time_end = data.get('time_end')
+            dfrom = slot_date
+            dto = slot_date
+            conflict_events, _, _ = _build_teacher_calendar_events(
+                conn, session['user_id'], dfrom, dto,
+            )
+            confirm_overlap = data.get('confirm_overlap') in (
+                True, 'true', '1', 1, 'yes',
+            )
+            slot_id = create_office_slot(
+                conn,
+                session['user_id'],
+                slot_date,
+                time_start,
+                time_end,
+                room,
+                data.get('topic', 'Приём'),
+                int(data.get('max_students', 1)),
+                audience,
+                group_ids,
+                conflict_events=conflict_events,
+                confirm_overlap=confirm_overlap,
+            )
+        return jsonify({'ok': True, 'slot_id': slot_id})
+    except ValueError as exc:
+        err = str(exc)
+        if err == 'LESSON_OVERLAP':
+            return jsonify({
+                'error': 'В это время пара. Подтвердите создание слота.',
+                'need_confirm': True,
+            }), 409
+        return jsonify({'error': err}), 409
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 500
+
+
+@app.route('/api/teacher/slots/<int:slot_id>/bookings')
+@login_required
+@role_required('teacher')
+def api_slot_bookings(slot_id):
+    with get_db() as conn:
+        rows = list_slot_bookings(conn, slot_id)
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/api/teacher/bookings/<int:booking_id>', methods=['PATCH'])
+@login_required
+@role_required('teacher')
+def api_booking_patch(booking_id):
+    data = request.get_json(silent=True) or {}
+    status = data.get('status', 'rejected')
+    with get_db() as conn:
+        ok = update_booking_status(conn, booking_id, session['user_id'], status)
+    if not ok:
+        return jsonify({'error': 'Не найдено'}), 404
+    return jsonify({'ok': True})
+
+
+@app.route('/api/groups/search')
+@login_required
+def api_groups_search():
+    q = request.args.get('q', '').strip()
+    with get_db() as conn:
+        rows = search_groups(conn, q, limit=40)
+    return jsonify([{'id': r['id'], 'name': r['name']} for r in rows])
+
+
+@app.route('/appointment')
+@login_required
+@role_required('student')
+def appointment_list():
+    with get_db() as conn:
+        teachers = list_teachers_public(conn)
+    return render_template('appointment.html', teachers=teachers)
+
+
+@app.route('/appointment/mine')
+@login_required
+@role_required('student')
+def appointment_mine():
+    return redirect(url_for('schedule_page'))
+
+
+@app.route('/appointment/<int:teacher_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('student')
+def appointment_teacher(teacher_id):
+    with get_db() as conn:
+        teacher = get_teacher_public(conn, teacher_id)
+        if not teacher:
+            abort(404)
+        if request.method == 'POST':
+            slot_id = request.form.get('slot_id', type=int)
+            group_id = session.get('group_id')
+            if slot_id and student_can_book_slot(conn, slot_id, group_id):
+                overlap_msg = student_slot_lesson_overlap(
+                    conn, session.get('group'), slot_id,
+                )
+                ok, err = create_booking(conn, slot_id, session['user_id'])
+                if ok:
+                    flash('Вы записаны. Смотрите в расписании.')
+                    if overlap_msg:
+                        flash(overlap_msg, 'warning')
+                else:
+                    flash(err or 'Не удалось записаться')
+            else:
+                flash('Запись недоступна')
+            slot_row = conn.execute(
+                'SELECT slot_date FROM office_slots WHERE id = %s',
+                (request.form.get('slot_id', type=int),),
+            ).fetchone() if request.form.get('slot_id', type=int) else None
+            redir_date = None
+            if slot_row and slot_row.get('slot_date'):
+                sd = slot_row['slot_date']
+                redir_date = sd.isoformat()[:10] if hasattr(sd, 'isoformat') else str(sd)[:10]
+            return redirect(url_for(
+                'appointment_teacher', teacher_id=teacher_id, date=redir_date,
+            ))
+
+        slots = get_available_slots_for_student(
+            conn, teacher_id, session.get('group_id'),
+            date.today().isoformat(),
+            (date.today() + timedelta(days=120)).isoformat(),
+        )
+        slots_by_date = group_slots_by_date(slots)
+        selected_date = request.args.get('date')
+        if selected_date and selected_date not in slots_by_date:
+            selected_date = None
+        if not selected_date and slots_by_date:
+            selected_date = next(iter(slots_by_date))
+        day_slots = slots_by_date.get(selected_date, []) if selected_date else []
+        slot_warnings = {}
+        group_name = session.get('group')
+        for s in slots:
+            msg = student_slot_lesson_overlap(conn, group_name, s['id'])
+            if msg:
+                slot_warnings[s['id']] = msg
+
+    return render_template(
+        'appointment_teacher.html',
+        teacher=teacher,
+        slots_by_date=slots_by_date,
+        selected_date=selected_date,
+        day_slots=day_slots,
+        slot_warnings=slot_warnings,
+        teacher_id=teacher_id,
+    )
+
+
+@app.route('/admin', methods=['GET', 'POST'])
+@login_required
+@role_required('admin')
+def admin_panel():
+    tab = request.args.get('tab', 'students')
+    parser_output = None
+    uploaded_filename = None
+
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+        if action == 'upload_schedule':
+            file = request.files.get('schedule_file')
+            if file and allowed_file(file.filename):
+                os.makedirs(UPLOADS_DIR, exist_ok=True)
+                final_name = f'{datetime.now().strftime("%Y%m%d_%H%M%S")}_{secure_filename(file.filename)}'
+                saved_path = os.path.join(UPLOADS_DIR, final_name)
+                file.save(saved_path)
+                uploaded_filename = final_name
+                ef_raw = request.form.get('effective_from', '').strip()
+                ef = ef_raw if ef_raw else None
+                ok, parser_output = update_schedule_from_excel(saved_path, ef)
+                flash('Расписание обновлено.' if ok else 'Ошибка загрузки.')
+            else:
+                flash('Выберите .xlsx файл.')
+            return redirect(url_for('admin_panel', tab='schedule'))
+
+        if action == 'create_student':
+            return _admin_create_student()
+        if action == 'update_student':
+            return _admin_update_student()
+        if action == 'delete_user':
+            uid = request.form.get('user_id', type=int)
+            if uid:
+                with get_db() as conn:
+                    delete_user(conn, uid)
+                flash('Пользователь удалён.')
+            return redirect(url_for('admin_panel', tab='students'))
+        if action == 'create_teacher':
+            return _admin_create_teacher()
+        if action == 'update_teacher':
+            return _admin_update_teacher()
+        if action == 'delete_teacher':
+            uid = request.form.get('user_id', type=int)
+            if uid:
+                with get_db() as conn:
+                    delete_user(conn, uid)
+                flash('Преподаватель удалён.')
+            return redirect(url_for('admin_panel', tab='teachers'))
+
+    group_id = request.args.get('group_id', type=int)
+    search_q = request.args.get('q', '').strip()
+    page = max(1, request.args.get('page', 1, type=int))
+    per_page = 50
+    offset = (page - 1) * per_page
+
+    with get_db() as conn:
+        students_total = count_students_admin(conn, group_id, search_q or None)
+        students = list_students_admin(
+            conn, group_id, search_q or None, limit=per_page, offset=offset,
+        )
+        teachers = list_teachers_admin(conn)
+        schedule_teachers = list_schedule_teacher_names(conn)
+        all_groups = list_groups(conn)
+        vyatsu_links = {
+            r['teacher_user_id']: r for r in list_vyatsu_link_statuses(conn)
+        }
+
+    total_pages = max(1, (students_total + per_page - 1) // per_page)
+
+    return render_template(
+        'admin_panel.html',
+        tab=tab,
+        students=students,
+        students_total=students_total,
+        students_page=page,
+        students_total_pages=total_pages,
+        filter_group_id=group_id,
+        filter_q=search_q,
+        teachers=teachers,
+        schedule_teachers=schedule_teachers,
+        all_groups=all_groups,
+        parser_output=parser_output,
+        uploaded_filename=uploaded_filename,
+        vyatsu_links=vyatsu_links,
+    )
+
+
+def _admin_create_student():
+    email = request.form.get('email', '').strip()
+    password = request.form.get('password', '').strip()
+    group_name = request.form.get('group_name', '').strip()
+    # ... validation same as before
+    last_name = request.form.get('last_name', '').strip()
+    first_name = request.form.get('first_name', '').strip()
+    middle_name = request.form.get('middle_name', '').strip()
+    card_number = request.form.get('card_number', '').strip()
+    study_form = request.form.get('study_form', '').strip()
+    issue_date = request.form.get('issue_date', '').strip()
+    course_number = request.form.get('course_number', '').strip()
+    face_photo = request.files.get('face_photo')
+
+    if not all([email, password, group_name, last_name, first_name, card_number, study_form, issue_date, course_number]):
+        flash('Заполните обязательные поля.')
+        return redirect(url_for('admin_panel', tab='students'))
+    if not is_password_allowed(password) or not is_card_number_valid(card_number):
+        flash('Проверьте пароль и номер билета.')
+        return redirect(url_for('admin_panel', tab='students'))
+
+    course = get_course_from_group(group_name)
+    student_id = f"STU-{email.split('@')[0][:5]}-{course}"
+    try:
+        issue_date = datetime.strptime(issue_date, '%Y-%m-%d').date()
+    except ValueError:
+        flash('Некорректная дата.')
+        return redirect(url_for('admin_panel', tab='students'))
+
+    with get_db() as conn:
+        if email_exists(conn, email):
+            flash('Email уже занят.')
+            return redirect(url_for('admin_panel', tab='students'))
+        group_id = get_or_create_group(conn, group_name)
+        user_id = create_student_user(
+            conn, email, hash_password(password), last_name, first_name, middle_name or None,
+            group_id, student_id, course,
+            {
+                'card_number_hash': hash_card_number(card_number),
+                'card_number_last4': card_number[-4:],
+                'study_form': study_form,
+                'issue_date': issue_date,
+                'course_number': int(course_number),
+                'face_photo_path': None,
+            },
+        )
+        path, err = save_private_student_photo(face_photo, user_id, 'face')
+        if err:
+            flash(err)
+            return redirect(url_for('admin_panel', tab='students'))
+        if path:
+            conn.execute(
+                'UPDATE student_profiles SET face_photo_path = %s WHERE user_id = %s',
+                (path, user_id),
+            )
+    flash('Студент создан.')
+    return redirect(url_for('admin_panel', tab='students'))
+
+
+def _admin_update_student():
+    user_id = request.form.get('user_id', type=int)
+    email = request.form.get('email', '').strip()
+    group_name = request.form.get('group_name', '').strip()
+    last_name = request.form.get('last_name', '').strip()
+    first_name = request.form.get('first_name', '').strip()
+    middle_name = request.form.get('middle_name', '').strip()
+    card_number = request.form.get('card_number', '').strip()
+    study_form = request.form.get('study_form', '').strip()
+    issue_date = request.form.get('issue_date', '').strip()
+    course_number = request.form.get('course_number', '').strip()
+    face_photo = request.files.get('face_photo')
+
+    if not user_id:
+        flash('Некорректный ID.')
+        return redirect(url_for('admin_panel', tab='students'))
+
+    course = get_course_from_group(group_name)
+    student_id = f"STU-{email.split('@')[0][:5]}-{course}"
+    try:
+        issue_date = datetime.strptime(issue_date, '%Y-%m-%d').date()
+    except ValueError:
+        flash('Некорректная дата.')
+        return redirect(url_for('admin_panel', tab='students'))
+
+    with get_db() as conn:
+        if email_exists(conn, email, user_id):
+            flash('Email занят.')
+            return redirect(url_for('admin_panel', tab='students'))
+        prof = get_student_profile(conn, user_id)
+        card_fields = {
+            'card_number_hash': prof['card_number_hash'],
+            'card_number_last4': prof['card_number_last4'],
+            'study_form': study_form,
+            'issue_date': issue_date,
+            'course_number': int(course_number),
+        }
+        if card_number and is_card_number_valid(card_number):
+            card_fields['card_number_hash'] = hash_card_number(card_number)
+            card_fields['card_number_last4'] = card_number[-4:]
+        path, err = save_private_student_photo(face_photo, user_id, 'face')
+        if err:
+            flash(err)
+            return redirect(url_for('admin_panel', tab='students'))
+        if path:
+            card_fields['face_photo_path'] = path
+        group_id = get_or_create_group(conn, group_name)
+        update_student(
+            conn, user_id, email, last_name, first_name, middle_name or None,
+            group_id, student_id, course, card_fields,
+        )
+    flash('Студент обновлён.')
+    return redirect(url_for('admin_panel', tab='students'))
+
+
+def _admin_create_teacher():
+    email = request.form.get('email', '').strip()
+    password = request.form.get('password', '').strip()
+    last_name = request.form.get('last_name', '').strip()
+    first_name = request.form.get('first_name', '').strip()
+    middle_name = request.form.get('middle_name', '').strip()
+    position = request.form.get('position_title', '').strip()
+    office = request.form.get('office_room', '').strip()
+    st_id = request.form.get('schedule_teacher_id', type=int)
+
+    if not all([email, password, last_name, first_name, office]):
+        flash('Заполните обязательные поля преподавателя.')
+        return redirect(url_for('admin_panel', tab='teachers'))
+    if not is_password_allowed(password) or not validate_office_room(office):
+        flash('Проверьте пароль и кабинет (формат 5-104).')
+        return redirect(url_for('admin_panel', tab='teachers'))
+
+    with get_db() as conn:
+        if email_exists(conn, email):
+            flash('Email занят.')
+            return redirect(url_for('admin_panel', tab='teachers'))
+        create_teacher_user(
+            conn, email, hash_password(password), last_name, first_name,
+            middle_name or None, position, office, st_id,
+        )
+    flash('Преподаватель создан.')
+    return redirect(url_for('admin_panel', tab='teachers'))
+
+
+def _admin_update_teacher():
+    user_id = request.form.get('user_id', type=int)
+    email = request.form.get('email', '').strip()
+    last_name = request.form.get('last_name', '').strip()
+    first_name = request.form.get('first_name', '').strip()
+    middle_name = request.form.get('middle_name', '').strip()
+    position = request.form.get('position_title', '').strip()
+    office = request.form.get('office_room', '').strip()
+    st_id = request.form.get('schedule_teacher_id', type=int) or None
+
+    if not user_id or not validate_office_room(office):
+        flash('Проверьте данные.')
+        return redirect(url_for('admin_panel', tab='teachers'))
+
+    with get_db() as conn:
+        if email_exists(conn, email, user_id):
+            flash('Email занят.')
+            return redirect(url_for('admin_panel', tab='teachers'))
+        update_teacher(
+            conn, user_id, email, last_name, first_name, middle_name or None,
+            position, office, st_id,
+        )
+    flash('Преподаватель обновлён.')
+    return redirect(url_for('admin_panel', tab='teachers'))
+
+
+@app.route('/api/calendar/event-meta')
+@login_required
+def api_calendar_event_meta():
+    event_key = request.args.get('event_key', '').strip()
+    if not event_key:
+        return jsonify({'error': 'event_key required'}), 400
+    with get_db() as conn:
+        note = get_note(conn, session['user_id'], event_key)
+        slot_id = resolve_slot_id_from_event_key(conn, event_key)
+        keys = attachment_event_keys_for_lookup(event_key, slot_id)
+        attachments = list_attachments_for_event_keys(conn, keys)
+        my_files = list_note_files_for_event(conn, session['user_id'], event_key)
+    return jsonify({
+        'event_key': event_key,
+        'note': note['note_text'] if note else '',
+        'teacher_files': _serialize_teacher_files(attachments),
+        'my_files': [
+            {
+                'id': f['id'],
+                'name': f['original_name'],
+                'url': url_for('api_calendar_note_file_download', file_id=f['id']),
+            }
+            for f in my_files
+        ],
+        'attachments': _serialize_teacher_files(attachments),
+        'role': session.get('role'),
+    })
+
+
+@app.route('/api/calendar/notes', methods=['PUT'])
+@login_required
+def api_calendar_notes():
+    data = request.get_json(silent=True) or {}
+    event_key = (data.get('event_key') or '').strip()
+    if not event_key:
+        return jsonify({'error': 'event_key required'}), 400
+    with get_db() as conn:
+        upsert_note(
+            conn, session['user_id'], event_key,
+            data.get('event_type', 'lesson'), data.get('note_text', ''),
+        )
+    return jsonify({'ok': True})
+
+
+@app.route('/api/calendar/attachments', methods=['POST'])
+@login_required
+@role_required('teacher')
+def api_calendar_attachments_upload():
+    event_key = (request.form.get('event_key') or '').strip()
+    event_type = request.form.get('event_type', 'lesson')
+    slot_id = request.form.get('slot_id', type=int)
+    if slot_id and not event_key.startswith('slot:'):
+        event_key = f'slot:{slot_id}'
+        event_type = 'office_slot'
+    if not event_key:
+        return jsonify({'error': 'event_key required'}), 400
+    file = request.files.get('file')
+    if not file or not file.filename:
+        return jsonify({'error': 'Файл не выбран'}), 400
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in ALLOWED_CALENDAR_EXTENSIONS:
+        return jsonify({'error': 'Тип файла не разрешён'}), 400
+    safe = secure_filename(file.filename)
+    stored = f'{session["user_id"]}_{datetime.now().strftime("%Y%m%d%H%M%S")}_{safe}'
+    path = os.path.join(CALENDAR_ATTACHMENTS_DIR, stored)
+    file.save(path)
+    with get_db() as conn:
+        aid = insert_attachment(
+            conn, session['user_id'], event_key,
+            event_type, path, file.filename,
+        )
+    return jsonify({
+        'ok': True,
+        'id': aid,
+        'url': url_for('api_calendar_attachment_download', attachment_id=aid),
+        'name': file.filename,
+    })
+
+
+@app.route('/api/calendar/attachments/<int:attachment_id>')
+@login_required
+def api_calendar_attachment_download(attachment_id):
+    with get_db() as conn:
+        row = get_attachment(conn, attachment_id)
+        if not row or not user_can_download_attachment(
+            conn, session['user_id'], session.get('role'), row,
+        ):
+            abort(403)
+    if not os.path.isfile(row['stored_path']):
+        abort(404)
+    return send_file(
+        row['stored_path'],
+        as_attachment=True,
+        download_name=row['original_name'],
+    )
+
+
+@app.route('/api/calendar/note-files', methods=['POST'])
+@login_required
+def api_calendar_note_files_upload():
+    event_key = (request.form.get('event_key') or '').strip()
+    if not event_key:
+        return jsonify({'error': 'event_key required'}), 400
+    file = request.files.get('file')
+    if not file or not file.filename:
+        return jsonify({'error': 'Файл не выбран'}), 400
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in ALLOWED_CALENDAR_EXTENSIONS:
+        return jsonify({'error': 'Тип файла не разрешён'}), 400
+    safe = secure_filename(file.filename)
+    stored = f'{session["user_id"]}_{datetime.now().strftime("%Y%m%d%H%M%S")}_{safe}'
+    path = os.path.join(CALENDAR_NOTE_FILES_DIR, stored)
+    file.save(path)
+    with get_db() as conn:
+        fid = insert_note_file(
+            conn, session['user_id'], event_key,
+            request.form.get('event_type', 'lesson'), path, file.filename,
+        )
+    return jsonify({
+        'ok': True,
+        'id': fid,
+        'url': url_for('api_calendar_note_file_download', file_id=fid),
+        'name': file.filename,
+    })
+
+
+@app.route('/api/calendar/note-files/<int:file_id>')
+@login_required
+def api_calendar_note_file_download(file_id):
+    with get_db() as conn:
+        row = get_note_file(conn, file_id)
+    if not row or row['user_id'] != session['user_id']:
+        abort(403)
+    if not os.path.isfile(row['stored_path']):
+        abort(404)
+    return send_file(
+        row['stored_path'],
+        as_attachment=True,
+        download_name=row['original_name'],
+    )
+
+
+@app.route('/api/teacher/slots/<int:slot_id>', methods=['PATCH', 'DELETE'])
+@login_required
+@role_required('teacher')
+def api_teacher_slot_detail(slot_id):
+    if request.method == 'DELETE':
+        try:
+            with get_db() as conn:
+                ok = delete_office_slot(conn, slot_id, session['user_id'])
+            if not ok:
+                return jsonify({'error': 'Не найдено'}), 404
+            return jsonify({'ok': True})
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 409
+
+    data = request.get_json(silent=True) or {}
+    try:
+        with get_db() as conn:
+            sd = data.get('slot_date')
+            conflict_events, _, _ = _build_teacher_calendar_events(
+                conn, session['user_id'], sd, sd,
+            )
+            confirm_overlap = data.get('confirm_overlap') in (
+                True, 'true', '1', 1, 'yes',
+            )
+            update_office_slot(
+                conn, slot_id, session['user_id'], data,
+                conflict_events=conflict_events,
+                confirm_overlap=confirm_overlap,
+            )
+        return jsonify({'ok': True})
+    except ValueError as exc:
+        err = str(exc)
+        if err == 'LESSON_OVERLAP':
+            return jsonify({'error': 'В это время пара.', 'need_confirm': True}), 409
+        return jsonify({'error': err}), 409
+
+
+@app.route('/admin/sync-campus', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_sync_campus():
+    try:
+        from parsers.vyatsu_campus import main as sync_campus
+        sync_campus()
+        flash('Корпуса и общежития обновлены.')
+    except Exception as exc:
+        flash(f'Ошибка синхронизации: {exc}')
+    return redirect(url_for('admin_panel', tab='help'))
+
 
 @app.route('/news')
 def news():
     news_items, parse_error = fetch_vk_news(limit=10)
     if not news_items:
-        cached = _load_cached_news()
+        cached = load_cached_news_formatted(10)
         if cached:
-            news_items = cached[:10]
-            parse_error = parse_error or (
-                'Не удалось получить свежие новости из ВК с этого сервера '
-                '(у части хостингов VK режет запросы по IP). '
-                'Показан последний сохранённый кэш. Для стабильной загрузки задайте VK_ACCESS_TOKEN '
-                'в переменных окружения Render.'
-            )
+            news_items = cached
+            parse_error = parse_error or 'Показан кэш. Задайте VK_ACCESS_TOKEN в .env.'
+    return render_template('news.html', news=news_items, source_url=VK_GROUP_URL, parse_error=parse_error)
 
-    return render_template(
-        'news.html',
-        news=news_items,
-        source_url=VK_GROUP_URL,
-        parse_error=parse_error,
-    )
-
-@app.route('/admin/login', methods=['GET', 'POST'])
-def admin_login():
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
-
-        if username == ADMIN_USERNAME and bcrypt.checkpw(password.encode(), ADMIN_PASSWORD_HASH.encode()):
-            session['admin_logged_in'] = True
-            flash('Вы вошли в админ-панель.')
-            return redirect(url_for('admin_panel'))
-
-        flash('Неверный логин или пароль администратора.')
-
-    return render_template('admin_login.html')
-
-@app.route('/admin/logout')
-def admin_logout():
-    session.pop('admin_logged_in', None)
-    flash('Вы вышли из админ-панели.')
-    return redirect(url_for('admin_login'))
-
-@app.route('/admin', methods=['GET', 'POST'])
-def admin_panel():
-    if not session.get('admin_logged_in'):
-        return redirect(url_for('admin_login'))
-
-    parser_output = None
-    uploaded_filename = None
-    students = []
-
-    if request.method == 'POST':
-        action = request.form.get('action', '').strip()
-        if action == 'create_user':
-            email = request.form.get('email', '').strip()
-            password = request.form.get('password', '').strip()
-            group_name = request.form.get('group_name', '').strip()
-            last_name = request.form.get('last_name', '').strip()
-            first_name = request.form.get('first_name', '').strip()
-            middle_name = request.form.get('middle_name', '').strip()
-            card_number = request.form.get('card_number', '').strip()
-            study_form = request.form.get('study_form', '').strip()
-            issue_date = request.form.get('issue_date', '').strip()
-            course_number = request.form.get('course_number', '').strip()
-            face_photo = request.files.get('face_photo')
-
-            if not email or not password or not group_name:
-                flash('Заполните email, пароль и группу.')
-                return redirect(url_for('admin_panel'))
-            if not is_password_allowed(password):
-                flash('Пароль: только английские буквы и цифры.')
-                return redirect(url_for('admin_panel'))
-            if not all([last_name, first_name, card_number, study_form, issue_date, course_number]):
-                flash('Для студбилета заполните обязательные поля.')
-                return redirect(url_for('admin_panel'))
-            if not is_name_part_valid(last_name) or not is_name_part_valid(first_name) or not is_name_part_valid(middle_name, allow_empty=True):
-                flash('Проверьте поля фамилии, имени и отчества.')
-                return redirect(url_for('admin_panel'))
-            if not is_card_number_valid(card_number):
-                flash('Номер билета должен содержать только цифры.')
-                return redirect(url_for('admin_panel'))
-            if study_form not in ('Очная', 'Заочная'):
-                flash('Форма обучения должна быть Очная или Заочная.')
-                return redirect(url_for('admin_panel'))
-            if course_number not in ('1', '2', '3', '4'):
-                flash('Курс должен быть от 1 до 4.')
-                return redirect(url_for('admin_panel'))
-            try:
-                issue_date = datetime.strptime(issue_date, '%Y-%m-%d').strftime('%Y-%m-%d')
-            except ValueError:
-                flash('Некорректная дата выдачи студбилета.')
-                return redirect(url_for('admin_panel'))
-
-            course = get_course_from_group(group_name)
-            student_id = f"STU-{email.split('@')[0][:5]}-{course}"
-            pwd_hash = hash_password(password)
-
-            with get_students_db() as conn:
-                existing = conn.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
-                if existing:
-                    flash('Пользователь с таким email уже существует.')
-                    return redirect(url_for('admin_panel'))
-                conn.execute('''
-                    INSERT INTO users (email, password_hash, last_name, first_name, middle_name, group_name, student_id, course)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (email, pwd_hash, last_name, first_name, middle_name or None, group_name, student_id, course))
-                user_id = conn.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()['id']
-                face_photo_path, face_photo_error = save_private_student_photo(face_photo, user_id, 'face')
-                if face_photo_error:
-                    conn.rollback()
-                    flash(face_photo_error)
-                    return redirect(url_for('admin_panel'))
-                conn.execute('''
-                    INSERT INTO student_cards
-                    (user_id, last_name, first_name, middle_name, card_number_hash, card_number_last4,
-                     photo_path, face_photo_path, study_form, issue_date, course_number, verification_signature)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (user_id, last_name, first_name, middle_name, hash_card_number(card_number), card_number[-4:],
-                      None, face_photo_path, study_form, issue_date, int(course_number), None))
-                conn.commit()
-            flash('Аккаунт и студбилет созданы.')
-            return redirect(url_for('admin_panel'))
-        elif action == 'update_student':
-            user_id = request.form.get('user_id', '').strip()
-            email = request.form.get('email', '').strip()
-            group_name = request.form.get('group_name', '').strip()
-            last_name = request.form.get('last_name', '').strip()
-            first_name = request.form.get('first_name', '').strip()
-            middle_name = request.form.get('middle_name', '').strip()
-            card_number = request.form.get('card_number', '').strip()
-            study_form = request.form.get('study_form', '').strip()
-            issue_date = request.form.get('issue_date', '').strip()
-            course_number = request.form.get('course_number', '').strip()
-            face_photo = request.files.get('face_photo')
-
-            if not user_id.isdigit():
-                flash('Некорректный идентификатор студента.')
-                return redirect(url_for('admin_panel'))
-            if not email or not group_name or not all([last_name, first_name, study_form, issue_date, course_number]):
-                flash('Заполните обязательные поля для обновления.')
-                return redirect(url_for('admin_panel'))
-            if not is_name_part_valid(last_name) or not is_name_part_valid(first_name) or not is_name_part_valid(middle_name, allow_empty=True):
-                flash('Проверьте поля фамилии, имени и отчества.')
-                return redirect(url_for('admin_panel'))
-            if study_form not in ('Очная', 'Заочная'):
-                flash('Форма обучения должна быть Очная или Заочная.')
-                return redirect(url_for('admin_panel'))
-            if course_number not in ('1', '2', '3', '4'):
-                flash('Курс должен быть от 1 до 4.')
-                return redirect(url_for('admin_panel'))
-            try:
-                issue_date = datetime.strptime(issue_date, '%Y-%m-%d').strftime('%Y-%m-%d')
-            except ValueError:
-                flash('Некорректная дата выдачи студбилета.')
-                return redirect(url_for('admin_panel'))
-
-            course = get_course_from_group(group_name)
-            student_id = f"STU-{email.split('@')[0][:5]}-{course}"
-            with get_students_db() as conn:
-                existing = conn.execute('SELECT id FROM users WHERE email = ? AND id != ?', (email, int(user_id))).fetchone()
-                if existing:
-                    flash('Этот email уже используется другим пользователем.')
-                    return redirect(url_for('admin_panel'))
-                card = conn.execute(
-                    'SELECT id, face_photo_path, card_number_hash, card_number_last4 FROM student_cards WHERE user_id = ?',
-                    (int(user_id),)
-                ).fetchone()
-                if not card:
-                    flash('Студбилет для выбранного пользователя не найден.')
-                    return redirect(url_for('admin_panel'))
-                face_photo_path = card['face_photo_path']
-                card_number_hash = card['card_number_hash']
-                card_number_last4 = card['card_number_last4']
-                if card_number:
-                    if not is_card_number_valid(card_number):
-                        flash('Номер билета должен содержать только цифры.')
-                        return redirect(url_for('admin_panel'))
-                    card_number_hash = hash_card_number(card_number)
-                    card_number_last4 = card_number[-4:]
-                new_face_photo_path, face_photo_error = save_private_student_photo(face_photo, int(user_id), 'face')
-                if face_photo_error:
-                    flash(face_photo_error)
-                    return redirect(url_for('admin_panel'))
-                if new_face_photo_path:
-                    face_photo_path = new_face_photo_path
-                conn.execute('''
-                    UPDATE users
-                    SET email = ?, last_name = ?, first_name = ?, middle_name = ?, group_name = ?, student_id = ?, course = ?
-                    WHERE id = ?
-                ''', (email, last_name, first_name, middle_name or None, group_name, student_id, course, int(user_id)))
-                conn.execute('''
-                    UPDATE student_cards
-                    SET last_name = ?, first_name = ?, middle_name = ?, card_number_hash = ?, card_number_last4 = ?,
-                        face_photo_path = ?, study_form = ?, issue_date = ?, course_number = ?, verification_signature = NULL
-                    WHERE user_id = ?
-                ''', (last_name, first_name, middle_name or None, card_number_hash, card_number_last4,
-                      face_photo_path, study_form, issue_date, int(course_number), int(user_id)))
-                conn.commit()
-            flash('Данные студента обновлены.')
-            return redirect(url_for('admin_panel'))
-
-        file = request.files.get('schedule_file')
-        if not file or not file.filename:
-            flash('Выберите Excel-файл для загрузки.')
-            return redirect(url_for('admin_panel'))
-
-        if not allowed_file(file.filename):
-            flash('Допустим только файл формата .xlsx')
-            return redirect(url_for('admin_panel'))
-
-        os.makedirs(UPLOADS_DIR, exist_ok=True)
-        safe_name = secure_filename(file.filename)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        final_name = f'{timestamp}_{safe_name}'
-        saved_path = os.path.join(UPLOADS_DIR, final_name)
-        file.save(saved_path)
-        uploaded_filename = final_name
-
-        ok, message = update_schedule_from_excel(saved_path)
-        parser_output = message
-        if ok:
-            flash('Расписание обновлено и опубликовано на сайте.')
-        else:
-            flash('Не удалось обновить расписание. См. детали ниже.')
-
-    with get_students_db() as conn:
-        students = conn.execute('''
-            SELECT
-                u.id as user_id,
-                u.email,
-                u.group_name,
-                u.student_id,
-                u.course,
-                sc.card_number_last4,
-                sc.study_form,
-                sc.issue_date,
-                sc.course_number,
-                sc.last_name,
-                sc.first_name,
-                sc.middle_name,
-                sc.face_photo_path,
-                sc.id as card_id
-            FROM users u
-            LEFT JOIN student_cards sc ON sc.user_id = u.id
-            ORDER BY u.id DESC
-        ''').fetchall()
-
-    return render_template(
-        'admin_panel.html',
-        parser_output=parser_output,
-        uploaded_filename=uploaded_filename,
-        students=students
-    )
-
-@app.route('/student_card', methods=['GET', 'POST'])
-def student_card():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    with get_students_db() as conn:
-        user = conn.execute(
-            'SELECT id, last_name, first_name, middle_name, group_name, student_id, course FROM users WHERE id = ?',
-            (session['user_id'],)
-        ).fetchone()
-        card = conn.execute('''
-            SELECT id, last_name, first_name, middle_name, card_number_last4,
-                   face_photo_path, study_form, issue_date, course_number
-            FROM student_cards
-            WHERE user_id = ?
-        ''', (session['user_id'],)).fetchone()
-    if not user or not card:
-        return render_template('student_card.html', card=None, user=session)
-    fio = ' '.join([
-        (card['last_name'] or '').strip(),
-        (card['first_name'] or '').strip(),
-        (card['middle_name'] or '').strip(),
-    ]).strip()
-    masked_number = f'****{card["card_number_last4"]}' if card['card_number_last4'] else 'скрыт'
-    qr_payload = {
-        'type': 'vyatsu_student_card',
-        'student_id': row_value(user, 'student_id', ''),
-        'fio': fio,
-        'group': row_value(user, 'group_name', ''),
-        'course': card['course_number'],
-        'study_form': card['study_form'],
-        'issue_date': card['issue_date'],
-        'number': masked_number,
-        'card_id': card['id'],
-    }
-    qr_url = (
-        'https://api.qrserver.com/v1/create-qr-code/?size=260x260&data='
-        + quote_plus(json.dumps(qr_payload, ensure_ascii=False))
-    )
-    return render_template('student_card.html', card=card, profile=user, fio=fio, masked_number=masked_number, qr_url=qr_url)
-
-@app.route('/student_card/face/<int:card_id>')
-def student_card_face_photo(card_id):
-    if 'user_id' not in session and not session.get('admin_logged_in'):
-        return redirect(url_for('login'))
-
-    with get_students_db() as conn:
-        card = conn.execute(
-            'SELECT id, user_id, face_photo_path FROM student_cards WHERE id = ?',
-            (card_id,)
-        ).fetchone()
-
-    is_owner = 'user_id' in session and card and card['user_id'] == session['user_id']
-    is_admin = bool(session.get('admin_logged_in'))
-    if not card or not card['face_photo_path'] or (not is_owner and not is_admin):
-        abort(403)
-
-    abs_photo_path = os.path.join(PRIVATE_STORAGE_DIR, card['face_photo_path'])
-    if not os.path.exists(abs_photo_path):
-        abort(404)
-
-    return send_file(abs_photo_path, mimetype='image/jpeg', max_age=0)
 
 @app.route('/map')
 def map():
-    yandex_key = os.getenv('YANDEX_MAPS_API_KEY', '')
-    highlighted_building = normalize_building_number(request.args.get('building', ''))
+    highlighted = normalize_building_number(request.args.get('building', ''))
+    building_detail = None
+    dorms = []
+    buildings = []
+    try:
+        with get_db() as conn:
+            dorms = [dict(r) for r in list_buildings(conn, 'dorm')]
+            buildings = [dict(r) for r in list_buildings(conn, 'building')]
+            if highlighted:
+                building_detail = get_building_by_number(conn, int(highlighted), 'building')
+                if building_detail:
+                    building_detail = dict(building_detail)
+    except Exception:
+        pass
     return render_template(
         'map.html',
-        dorms=VYATSU_DORMS,
-        buildings=VYATSU_BUILDINGS,
+        dorms=dorms,
+        buildings=buildings,
+        map_locations=dorms + buildings,
         dorms_source_url=VYATSU_DORMS_URL,
         buildings_source_url=VYATSU_BUILDINGS_URL,
-        yandex_api_key=yandex_key,
-        highlighted_building=highlighted_building,
+        highlighted_building=highlighted,
     )
+
 
 @app.route('/faq')
 def faq():
-    with get_content_db() as conn:
-        faqs = conn.execute('SELECT * FROM faq').fetchall()
+    with get_db() as conn:
+        faqs = list_faq(conn)
     return render_template('faq.html', faqs=faqs)
 
-@app.route('/appointment', methods=['GET', 'POST'])
-def appointment():
+
+@app.route('/student_card')
+@login_required
+@role_required('student')
+def student_card():
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/student_card/face/<int:user_id>')
+def student_card_face_photo(user_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    
-    if request.method == 'POST':
-        teacher = request.form['teacher']
-        date = request.form['date']
-        time = request.form['time']
-        reason = request.form['reason']
-        with get_content_db() as conn:
-            conn.execute('''
-                INSERT INTO appointments (user_id, teacher_name, date, time, reason)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (session['user_id'], teacher, date, time, reason))
-            conn.commit()
-        flash('Заявка на запись отправлена!')
-        return redirect(url_for('appointment'))
-    
-    return render_template('appointment.html')
+    is_owner = session.get('user_id') == user_id
+    is_admin = session.get('role') == 'admin'
+    if not is_owner and not is_admin:
+        abort(403)
+    with get_db() as conn:
+        prof = get_student_profile(conn, user_id)
+    path = prof.get('face_photo_path') if prof else None
+    if not path:
+        abort(404)
+    abs_path = os.path.join(PRIVATE_STORAGE_DIR, path)
+    if not os.path.exists(abs_path):
+        abort(404)
+    return send_file(abs_path, mimetype='image/jpeg', max_age=0)
 
 
 @app.route('/manifest.webmanifest')
 def pwa_manifest():
     return send_from_directory(
-        app.static_folder,
-        'manifest.webmanifest',
-        mimetype='application/manifest+json',
-        max_age=3600,
+        app.static_folder, 'manifest.webmanifest',
+        mimetype='application/manifest+json', max_age=3600,
     )
 
 
 @app.route('/sw.js')
 def pwa_service_worker():
-    resp = send_from_directory(
-        app.static_folder,
-        'sw.js',
-        mimetype='application/javascript',
-    )
+    resp = send_from_directory(app.static_folder, 'sw.js', mimetype='application/javascript')
     resp.headers['Cache-Control'] = 'no-cache, max-age=0'
     return resp
 
 
 if __name__ == '__main__':
-    # Локально: PORT не задан — 5000. На Render и др. хостингах: PORT задаёт платформа.
-    # Слушать нужно 0.0.0.0, иначе внешний трафик до приложения не доходит.
     port = int(os.environ.get('PORT', '5000'))
     debug = os.environ.get('FLASK_DEBUG', '').lower() in ('1', 'true', 'yes')
     app.run(host='0.0.0.0', port=port, debug=debug)

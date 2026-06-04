@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block body_class %}layout-wide teacher-dashboard-page{% endblock %}
+{% block content %}
+<div class="dashboard-welcome reveal-on-scroll">
+    <h1 class="heading-brand">Временные слоты</h1>
+    <p class="welcome-sub">Выберите слот, чтобы увидеть записавшихся студентов</p>
+</div>
+
+<div class="teacher-slots-layout">
+    <aside class="teacher-slots-sidebar">
+        <div class="sidebar-actions">
+            <a href="{{ url_for('teacher_schedule') }}" class="btn btn-primary btn-block">+ Новый слот</a>
+        </div>
+        <div class="slot-pill-list">
+            {% for s in slots %}
+            <a href="{{ url_for('teacher_slots', slot=s.id) }}"
+               class="slot-pill btn {% if selected_slot == s.id %}active{% endif %}">
+                <span class="slot-pill-date">
+                    {% if s.slot_date and s.slot_date.strftime is defined %}
+                    {{ s.slot_date.strftime('%d.%m.%Y') }}
+                    {% else %}
+                    {{ s.slot_date }}
+                    {% endif %}
+                </span>
+                <span class="slot-pill-time">{{ (s.time_start|string)[:5] }} – {{ (s.time_end|string)[:5] }}</span>
+                <span class="slot-pill-topic">{{ s.topic }}</span>
+                <span class="slot-badge">{{ s.bookings_count }} / {{ s.max_students }}</span>
+            </a>
+            {% else %}
+            <p class="hint">Слотов пока нет.</p>
+            <a href="{{ url_for('teacher_schedule') }}" class="btn btn-outline btn-block">Создать в расписании</a>
+            {% endfor %}
+        </div>
+    </aside>
+    <section class="teacher-bookings-panel">
+        {% if selected_slot %}
+        <h3>Записавшиеся студенты</h3>
+        <div class="bookings-list">
+            <table class="bookings-list">
+                <thead>
+                    <tr><th>ФИО</th><th>Группа</th><th>Статус</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for b in bookings %}
+                    <tr>
+                        <td>{{ b.last_name }} {{ b.first_name }} {{ b.middle_name or '' }}</td>
+                        <td>{{ b.group_name or '—' }}</td>
+                        <td><span class="status-badge {{ b.status }}">{{ b.status }}</span></td>
+                        <td>
+                            {% if b.status != 'rejected' %}
+                            <button type="button" class="btn btn-danger btn-sm" onclick="rejectBooking({{ b.id }})">Отказать</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4">На этот слот пока никто не записался</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>Выберите слот слева, чтобы увидеть записавшихся.</p>
+        </div>
+        {% endif %}
+    </section>
+</div>
+<script>
+async function rejectBooking(id) {
+    await fetch('/api/teacher/bookings/' + id, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({status: 'rejected'}),
+    });
+    location.reload();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block body_class %}layout-wide teacher-dashboard-page{% endblock %}
+{% block content %}
+<h2>Расписание</h2>
+<p>Кликните по пустой ячейке, чтобы создать окно для записи студентов.</p>
+{% if vyatsu_status and vyatsu_status != 'ok' %}
+<p class="hint">Расписание ВятГУ: {{ vyatsu_status }} (проверьте ФИО в профиле)</p>
+{% endif %}
+{% if show_calendar_legend %}
+<div class="calendar-legend">
+    <span class="legend-lesson"><i></i> Колледж</span>
+    <span class="legend-university"><i></i> ВятГУ</span>
+    <span class="legend-slot"><i></i> Приём студентов</span>
+</div>
+{% endif %}
+{% include 'partials/calendar_shell.html' %}
+
+<div id="slot-modal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Новое окно приёма</h3>
+        <form id="slot-form">
+            <input type="hidden" name="slot_date" id="slot_date">
+            <input type="hidden" id="group_ids_hidden" name="group_ids_hidden">
+            <div class="form-group">
+                <label>Начало</label>
+                <input type="time" name="time_start" id="time_start" required>
+            </div>
+            <div class="form-group">
+                <label>Конец</label>
+                <input type="time" name="time_end" id="time_end" required>
+            </div>
+            <div class="form-group">
+                <label>Кабинет</label>
+                <input type="text" name="room_display" data-room-mask placeholder="5-104" pattern="\d{1,2}-\d{1,4}" required>
+            </div>
+            <div class="form-group">
+                <label>Тема</label>
+                <input type="text" name="topic" required>
+            </div>
+            <div class="form-group">
+                <label>Кто может записаться</label>
+                <select name="audience_type" id="audience_type">
+                    <option value="anyone">Все</option>
+                    <option value="one_group">Одна группа</option>
+                    <option value="multi_group">Несколько групп</option>
+                </select>
+            </div>
+            <div class="form-group" id="group-one-wrap" style="display:none;">
+                <label>Группа</label>
+                <input type="text" id="group_one_input" list="groups-datalist" placeholder="Начните вводить название группы">
+            </div>
+            <div class="form-group" id="group-multi-wrap" style="display:none;">
+                <label>Группы</label>
+                <div id="group-tags" class="group-picker-tags"></div>
+                <input type="text" id="group_multi_input" list="groups-datalist" placeholder="Введите и Enter">
+            </div>
+            <datalist id="groups-datalist">
+                {% for g in groups %}
+                <option value="{{ g.name }}"></option>
+                {% endfor %}
+            </datalist>
+            <div class="form-group">
+                <label>Макс. студентов</label>
+                <input type="number" name="max_students" min="1" value="1" required>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">Готово</button>
+                <button type="button" id="slot-cancel" class="btn btn-ghost">Отмена</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+window.CALENDAR_CLICKABLE = true;
+window.openSlotModal = function(dateStr, hour, min) {
+    document.getElementById('slot_date').value = dateStr;
+    var ts = document.getElementById('time_start');
+    var te = document.getElementById('time_end');
+    ts.value = (hour < 10 ? '0' : '') + hour + ':' + (min < 10 ? '0' : '') + min;
+    var endH = Math.min(21, hour + 1);
+    te.value = (endH < 10 ? '0' : '') + endH + ':' + (min < 10 ? '0' : '') + min;
+    document.getElementById('slot-modal').classList.add('open');
+};
+document.getElementById('slot-cancel').onclick = function() {
+    document.getElementById('slot-modal').classList.remove('open');
+};
+document.getElementById('slot-form').onsubmit = async function(e) {
+    e.preventDefault();
+    var fd = new FormData(e.target);
+    var audience = fd.get('audience_type');
+    var groupNames = [];
+    if (audience === 'one_group') {
+        var one = document.getElementById('group_one_input').value.trim();
+        if (one) groupNames = [one];
+    } else if (audience === 'multi_group' && window.GroupPicker) {
+        groupNames = window.GroupPicker.getSelectedNames();
+    }
+    var body = {
+        slot_date: fd.get('slot_date'),
+        time_start: fd.get('time_start'),
+        time_end: fd.get('time_end'),
+        room_display: fd.get('room_display'),
+        topic: fd.get('topic'),
+        audience_type: audience,
+        max_students: fd.get('max_students'),
+        group_names: groupNames,
+        confirm_overlap: !!window.slotConfirmOverlap,
+    };
+    async function postSlot(payload) {
+        return fetch('{{ url_for("api_teacher_slots") }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload),
+        });
+    }
+    var r = await postSlot(body);
+    var data = await r.json();
+    if (data.ok) location.reload();
+    else if (data.need_confirm && confirm('В это время пара. Создать слот всё равно?')) {
+        body.confirm_overlap = true;
+        r = await postSlot(body);
+        data = await r.json();
+        if (data.ok) location.reload();
+        else alert(data.error || 'Ошибка');
+    } else alert(data.error || 'Ошибка');
+};
+</script>
+{% include 'partials/event_modal.html' %}
+<script src="{{ url_for('static', filename='js/event-modal.js') }}"></script>
+<script src="{{ url_for('static', filename='js/room-mask.js') }}"></script>
+<script src="{{ url_for('static', filename='js/group-picker.js') }}"></script>
+{% endblock %}

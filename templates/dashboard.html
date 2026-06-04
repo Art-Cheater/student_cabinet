@@ -1,36 +1,54 @@
 {% extends "base.html" %}
+{% block body_class %}student-dashboard-page{% endblock %}
 {% block content %}
-<div class="dashboard">
-    <h1>Добро пожаловать, {{ user.user_name }}!</h1>
-    
-    <div class="dashboard-cards">
-        <div class="card">
-            <div class="card-icon">📅</div>
-            <h3>Расписание</h3>
-            <p>Группа: {{ user.group }}</p>
-            <a href="/schedule" class="btn btn-secondary">Посмотреть →</a>
+<div class="dashboard-welcome reveal-on-scroll">
+    <h1 class="heading-brand">Кабинет студента</h1>
+    <p class="welcome-sub">{{ fio or session.user_name }}</p>
+</div>
+
+{% if not card %}
+<div class="admin-note">
+    <h3>Студенческий билет не оформлен</h3>
+    <p>Обратитесь к администратору для создания студбилета.</p>
+</div>
+{% else %}
+<div class="student-cabinet-card">
+    <div class="student-cabinet-grid">
+        <div class="student-cabinet-info">
+            <h2>Цифровой студенческий</h2>
+            <p><strong>ФИО:</strong> {{ fio }}</p>
+            <p><strong>Группа:</strong> {{ profile.group_name }}</p>
+            <p><strong>ID студента:</strong> {{ profile.student_id }}</p>
+            <p><strong>Курс:</strong> {{ card.course_number }}</p>
+            <p><strong>Форма обучения:</strong> {{ card.study_form }}</p>
+            <p><strong>Дата выдачи:</strong> {{ card.issue_date }}</p>
+            <p><strong>Номер студбилета:</strong> {{ masked_number }}</p>
         </div>
-        
-        <div class="card">
-            <div class="card-icon">🎫</div>
-            <h3>Студенческий билет</h3>
-            <p>Данные, QR-код и фото для предъявления</p>
-            <a href="/student_card" class="btn btn-secondary">Открыть →</a>
-        </div>
-        
-        <div class="card">
-            <div class="card-icon">📝</div>
-            <h3>Запись к преподавателю</h3>
-            <p>Онлайн-запись на консультацию</p>
-            <a href="/appointment" class="btn btn-secondary">Записаться →</a>
-        </div>
-        
-        <div class="card">
-            <div class="card-icon">❓</div>
-            <h3>Помощь</h3>
-            <p>Ответы на частые вопросы</p>
-            <a href="/faq" class="btn btn-secondary">Читать →</a>
+        <div class="student-cabinet-qr">
+            <img src="{{ qr_url }}" alt="QR студенческого билета">
+            <p class="hint">QR для проверки</p>
         </div>
     </div>
+
+    <div class="student-photo-block">
+        <h3>Фото для студбилета</h3>
+        <div class="student-photo-preview">
+            {% if card.face_photo_path %}
+            <img src="{{ url_for('student_card_face_photo', user_id=card.user_id) }}" alt="Ваше фото">
+            {% else %}
+            <div class="student-photo-placeholder">Фото не загружено</div>
+            {% endif %}
+        </div>
+        <form method="POST" enctype="multipart/form-data" class="student-photo-form">
+            <input type="hidden" name="action" value="upload_photo">
+            <div class="form-group">
+                <label>Загрузить или заменить фото</label>
+                <input type="file" name="face_photo" accept="image/*" required>
+                <p class="hint">Форматы: PNG, JPG, JPEG, GIF, WEBP</p>
+            </div>
+            <button type="submit" class="btn btn-primary">Сохранить фото</button>
+        </form>
+    </div>
 </div>
+{% endif %}
 {% endblock %}

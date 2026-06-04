@@ -1,78 +1,89 @@
 # Student Cabinet (VyatSU)
 
-Веб-приложение личного кабинета студента на Flask:
-- авторизация студентов и админа;
-- расписание из `schedule.db`;
-- новости ВК;
-- карта корпусов/общежитий;
-- цифровой студенческий билет (данные + QR + фото лица);
-- админ-панель для создания и редактирования студентов.
+Веб-приложение личного кабинета на Flask с PostgreSQL:
+- единый вход для студентов, преподавателей и администратора (роли в БД);
+- расписание (календарь неделя/день) из Excel;
+- запись к преподавателю (слоты приёма);
+- новости ВК, FAQ, карта корпусов из БД;
+- цифровой студенческий билет.
 
-## Технологии
+## Запуск в Docker (на любом сервере)
 
-- Python 3.11+ (рекомендуется 3.12)
-- Flask
-- SQLite (`students.db`, `content.db`, `schedule.db`)
-- `requests`, `bcrypt`, `openpyxl`
-
-## Быстрый запуск
-
-1. Клонируйте проект и перейдите в папку:
+В образ попадает весь проект. Поднимаются контейнер **app** (сайт) и **db** (PostgreSQL):
 
 ```bash
-git clone <your-repo-url>
-cd student_cabinet
+docker compose up -d --build
+docker compose exec app python database/init_db.py
+docker compose exec app python parsers/vyatsu_campus.py
 ```
 
-2. Создайте и активируйте виртуальное окружение:
+Сайт: http://localhost:5000 (логин админа — `ADMIN_EMAIL` / `ADMIN_PASSWORD` из `docker-compose.yml`).
+
+## Требования
+
+- Python 3.11+
+- PostgreSQL 14+ (БД `StudentCabinet`)
+
+## Установка
 
 ```bash
 python -m venv .venv
-# Windows PowerShell
 .venv\Scripts\Activate.ps1
-```
-
-3. Установите зависимости:
-
-```bash
 pip install -r requirements.txt
 ```
 
-4. Запустите приложение:
+Скопируйте `.env.example` в `.env` и укажите `DATABASE_URL` и ключи.
+
+### Яндекс.Карты (страница «Карта»)
+
+1. [Кабинет разработчика Яндекс](https://developer.tech.yandex.ru/) — ключ с **JavaScript API**, **HTTP Геокодер**, **Маршрутизация**.
+2. В `.env`: `YANDEX_MAPS_API_KEY=...`
+3. Маршрут на карте: режим **auto** (по дорогам, с учётом пробок при успешном ответе API).
+
+Координаты корпусов: `data/campus_coords.json`, синхронизация — `python parsers/vyatsu_campus.py` или кнопка в админке.
+
+Миграция личных файлов к заметкам: `python database/migrate_note_files.py`
+
+## Инициализация БД (отдельно от приложения)
+
+```bash
+python database/init_db.py
+python database/migrate_sqlite.py   # если есть старые .db файлы
+python parsers/vyatsu_campus.py     # корпуса и общежития
+```
+
+Приложение **не создаёт** таблицы при старте — только подключается к готовой БД.
+
+## Запуск
 
 ```bash
 python app.py
 ```
 
-После запуска откройте: `http://127.0.0.1:5000`.
+Откройте `http://127.0.0.1:5000`.
 
-## Доступ в админ-панель
+## Вход администратора
 
-- Логин: `admin`
-- Пароль: `admin123`
+После `init_db.py`: email из `ADMIN_EMAIL` (по умолчанию `admin@vyatsu.ru`), пароль из `ADMIN_PASSWORD` (`admin123` в примере).
 
-При необходимости можно переопределить через переменные окружения:
-- `ADMIN_USERNAME`
-- `ADMIN_PASSWORD`
+## VK-токен
 
-## Важные файлы и данные
+1. Сообщество VK → Работа с API → Создать ключ (стена, документы).
+2. В `.env`: `VK_ACCESS_TOKEN=...`
+3. Расписание из постов: `python parsers/vk_schedule_sync.py`
 
-- `app.py` — основная логика приложения.
-- `students.db`, `content.db`, `schedule.db` — рабочие базы SQLite.
-- `private_storage/` — приватные файлы (например, фото лица студентов).
-- `vk_token.txt` — опциональный токен ВК (локально). На сервере (например Render) задайте **`VK_ACCESS_TOKEN`** в переменных окружения — без него ВК часто **не отдаёт ленту** запросам с IP хостингов, и парсинг виджета может вернуть пустой результат.
+Файл `vk_token.txt` не используется.
+
+## Расписание Excel
+
+Админ → вкладка «Расписание» или:
+
+```bash
+python schedule_parser/parse_schedule.py path/to/file.xlsx --effective-from 01.06.2026
+```
 
 ## Тесты
 
-Запуск тестов:
-
 ```bash
-python -m unittest -v tests.py
+python -m unittest tests.py
 ```
-
-
-## Примечания по безопасности
-
-- Не публикуйте в репозиторий приватные файлы и реальные БД.
-- Убедитесь, что `.gitignore` исключает `private_storage/`, `.env`, `*.db`.
-- Для production используйте отдельный секретный ключ `FLASK_SECRET_KEY`.

@@ -1,12 +1,8 @@
-import sqlite3
+#!/usr/bin/env python3
+"""Deprecated: use python database/init_db.py for PostgreSQL setup."""
+import sys
 import os
 
-from schedule_schema import apply_schedule_schema
-
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "schedule.db")
-
-conn = sqlite3.connect(DB_PATH)
-apply_schedule_schema(conn)
-conn.close()
-
-print("schedule.db успешно создан.")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+print('Используйте: python database/init_db.py')
+sys.path.insert(0, ROOT)

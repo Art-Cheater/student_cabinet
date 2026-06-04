@@ -31,7 +31,7 @@
         <div>
             <h3 style="margin-top:0;">Фото лица</h3>
             {% if card.face_photo_path %}
-                <img src="{{ url_for('student_card_face_photo', card_id=card.id) }}" alt="Фото лица" style="width:100%; max-height:320px; object-fit:cover; border-radius:8px;">
+                <img src="{{ url_for('student_card_face_photo', user_id=card.user_id) }}" alt="Фото лица" style="width:100%; max-height:320px; object-fit:cover; border-radius:8px;">
             {% else %}
                 <p class="hint">Фото лица не загружено.</p>
             {% endif %}

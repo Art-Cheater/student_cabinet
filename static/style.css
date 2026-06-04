@@ -161,6 +161,25 @@ body.nav-menu-open .nav-toggle .nav-toggle-bar:nth-child(3) {
     margin: 2rem auto;
     padding: 0 1rem;
     flex: 1;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (min-width: 1024px) {
+    body.layout-wide .container {
+        max-width: none;
+        margin: 1.5rem auto 2rem;
+        padding: 0 1.5rem;
+    }
+    .nav-container--wide {
+        max-width: none;
+        padding: 0 1.5rem;
+    }
+}
+
+.container--auth {
+    max-width: 480px;
+    margin: 2rem auto;
 }
 
 footer {
@@ -189,28 +208,131 @@ footer {
     margin-top: 1.5rem;
 }
 
+/* --- Кнопки: базовый компонент (внутренние страницы) --- */
 .btn {
-    display: inline-block;
-    padding: 0.75rem 1.5rem;
-    border-radius: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.65rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
     text-decoration: none;
-    margin: 0 0.5rem;
-    transition: transform 0.3s;
+    border: none;
+    cursor: pointer;
+    line-height: 1.3;
+    width: auto;
+    margin: 0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+a.btn {
+    box-sizing: border-box;
 }
 
 .btn:hover {
     transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(26, 42, 74, 0.18);
 }
 
 .btn-primary {
-    background: white;
+    background: linear-gradient(135deg, #667eea 0%, #5a6fd6 100%);
+    color: #fff;
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd6 0%, #4e63c4 100%);
+    color: #fff;
+}
+
+.btn-outline {
+    background: #fff;
+    color: #1f4fc7;
+    border: 2px solid #1f4fc7;
+}
+
+.btn-outline:hover {
+    background: #eef3ff;
+    color: #1a3fa8;
+}
+
+.btn-ghost {
+    background: #f5f7fa;
+    color: #4a5568;
+    border: 1px solid #d0d7de;
+}
+
+.btn-ghost:hover {
+    background: #eef1f5;
+    color: #1a2a4a;
+}
+
+.btn-sm {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.85rem;
+}
+
+.btn-block {
+    display: flex;
+    width: 100%;
+}
+
+.btn-danger {
+    background: #c62828;
+    color: #fff;
+    border: none;
+    padding: 0.45rem 0.9rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    width: auto;
+}
+
+.btn-danger:hover {
+    background: #b71c1c;
+    color: #fff;
+}
+
+.modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    align-items: center;
+}
+
+.modal-actions .btn,
+.modal-actions .btn-ghost {
+    flex: 1;
+    min-width: 120px;
+}
+
+/* Кнопки на градиентном hero (главная) */
+.hero .btn {
+    margin: 0 0.5rem;
+}
+
+.hero .btn-primary {
+    background: #fff;
     color: #667eea;
 }
 
-.btn-secondary {
-    background: rgba(255,255,255,0.2);
-    color: white;
-    border: 1px solid white;
+.hero .btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    border: 1px solid #fff;
+}
+
+.hero .btn-primary:hover {
+    background: #f8f9ff;
+    color: #5a6fd6;
+}
+
+.hero .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.35);
+    color: #fff;
 }
 
 .features {
@@ -265,19 +387,29 @@ footer {
     background: #f8f9fb;
 }
 
-button {
+.auth-form button[type="submit"].btn,
+.auth-form button[type="submit"]:not(.btn) {
     width: 100%;
-    padding: 0.75rem;
-    background: #1a2a4a;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 1rem;
-    cursor: pointer;
 }
 
-button:hover {
-    background: #2c3e66;
+button:not(.btn):not(.map-filter):not(.map-locate-btn):not(.map-route-btn):not(.map-list-row):not(.modal-close):not(.nav-toggle):not(.group-picker-tag button) {
+    padding: 0.75rem 1.25rem;
+    background: linear-gradient(135deg, #667eea 0%, #5a6fd6 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: auto;
+}
+
+button:not(.btn):not(.map-filter):not(.map-locate-btn):not(.map-route-btn):not(.map-list-row):not(.modal-close):not(.nav-toggle):not(.group-picker-tag button):hover {
+    background: linear-gradient(135deg, #5a6fd6 0%, #4e63c4 100%);
+}
+
+.admin-panel-page form button[type="submit"] {
+    margin-top: 0.25rem;
 }
 
 .auth-link {
@@ -285,8 +417,147 @@ button:hover {
     margin-top: 1rem;
 }
 
-.admin-panel {
-    max-width: 640px;
+.admin-panel,
+.admin-panel-page {
+    max-width: none;
+    width: 100%;
+}
+
+.admin-tab-panel {
+    display: none;
+}
+
+.admin-tab-panel.active {
+    display: block;
+}
+
+.nav-main-links a.nav-tab-active {
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+.admin-students-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #f8faff;
+    border-radius: 10px;
+    border: 1px solid #dfe8f8;
+}
+
+.admin-pagination {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.flash-warning {
+    background: #fff8e1;
+    border: 1px solid #ffcc80;
+    color: #5d4037;
+}
+
+.teacher-dashboard-page .teacher-dashboard-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e4ebf8;
+}
+
+.teacher-dashboard-page .teacher-slots-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 340px) 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+.teacher-dashboard-page .teacher-slots-sidebar {
+    background: #f8faff;
+    border-radius: 12px;
+    padding: 1.25rem;
+    border: 1px solid #dfe8f8;
+    max-height: 75vh;
+    overflow-y: auto;
+}
+
+.teacher-dashboard-page .slot-card {
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(26, 42, 74, 0.06);
+}
+
+.teacher-dashboard-page .teacher-bookings-panel {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.25rem;
+    border: 1px solid #dfe8f8;
+    box-shadow: 0 4px 16px rgba(26, 42, 74, 0.06);
+}
+
+.teacher-dashboard-page .teacher-slots-sidebar .sidebar-actions {
+    margin-bottom: 1rem;
+}
+
+.teacher-dashboard-page .empty-state .btn {
+    margin-top: 1rem;
+}
+
+.appointment-teachers {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+}
+
+.teacher-card {
+    background: #fff;
+    border: 1px solid #dfe8f8;
+    border-radius: 12px;
+    padding: 1.35rem;
+    box-shadow: 0 4px 16px rgba(26, 42, 74, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.teacher-card h3 {
+    color: #1a2a4a;
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.teacher-card p {
+    margin: 0;
+    color: #5a6c85;
+    font-size: 0.92rem;
+}
+
+.teacher-card .card-action {
+    margin-top: auto;
+    padding-top: 0.75rem;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.status-badge.pending { background: #fff3e0; color: #e65100; }
+.status-badge.confirmed { background: #e8f5e9; color: #2e7d32; }
+.status-badge.rejected { background: #ffebee; color: #c62828; }
+
+body.layout-wide .schedule-container {
+    width: 100%;
+    max-width: none;
 }
 
 .admin-log {
@@ -338,6 +609,26 @@ button:hover {
     border-radius: 10px;
     text-align: center;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+a.card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+}
+
+a.card-link:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+a.card-link .card-arrow {
+    display: inline-block;
+    margin-top: 0.75rem;
+    color: #2B587A;
+    font-weight: 600;
 }
 
 .card-icon {
@@ -807,6 +1098,99 @@ select:focus {
 .location-card p {
     margin: 0.2rem 0;
     line-height: 1.4;
+}
+
+.map-list-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.map-list-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid #dfe8f8;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    font: inherit;
+    color: inherit;
+}
+
+.map-list-row:hover,
+.map-list-row.active {
+    border-color: #1f4fc7;
+    background: #eef3ff;
+}
+
+.map-list-row-title {
+    font-weight: 600;
+    color: #1a2a4a;
+}
+
+.map-detail-panel {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid #dfe8f8;
+    border-radius: 10px;
+    background: #f8faff;
+    display: none;
+}
+
+.map-detail-panel.visible {
+    display: block;
+}
+
+.map-detail-panel img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+
+.map-detail-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+}
+
+.map-route-btn {
+    background: linear-gradient(135deg, #667eea 0%, #5a6fd6 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.65rem 1.25rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    width: 100%;
+}
+
+.map-route-btn:hover {
+    background: linear-gradient(135deg, #5a6fd6 0%, #4e63c4 100%);
+}
+
+.map-open-external {
+    display: inline-flex;
+    margin-top: 0.5rem;
+}
+
+.map-key-warning {
+    padding: 1rem;
+    background: #fff8e1;
+    border: 1px solid #ffcc80;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    color: #5d4037;
 }
 
 @media (max-width: 900px) {

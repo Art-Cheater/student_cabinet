@@ -1,0 +1,92 @@
+/* Цифровой кампус — дизайн-токены */
+:root {
+    --campus-bg: #F4F6F9;
+    --campus-surface: #FFFFFF;
+    --campus-blue: #0039A6;
+    --campus-blue-light: #0050B3;
+    --campus-blue-deep: #0B2B5B;
+    --campus-cta: #FFC107;
+    --campus-cta-hover: #E6AC00;
+    --campus-yellow-brand: #FFD700;
+    --campus-success: #10B981;
+    --campus-teal: #14B8A6;
+    --campus-text: #212529;
+    --campus-text-muted: #64748B;
+    --campus-border: #E2E8F0;
+    --campus-border-light: #F1F5F9;
+    --campus-warning-bg: #FEF3C7;
+    --campus-warning-text: #92400E;
+    --campus-danger: #DC3545;
+    --campus-gradient: linear-gradient(135deg, #0039A6 0%, #0050B3 100%);
+    --campus-ease: cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    --campus-radius-sm: 12px;
+    --campus-radius-clay: 24px;
+    --campus-radius-hero: 32px;
+    --campus-radius-modal: 24px;
+    --campus-container: 1280px;
+    --shadow-clay: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+    --shadow-clay-hover: 0 16px 32px -8px rgba(0, 0, 0, 0.08), 0 8px 16px -8px rgba(0, 0, 0, 0.04);
+    --shadow-clay-glow: 0 0 0 1px rgba(255, 193, 7, 0.35);
+    --campus-transition: all 0.2s var(--campus-ease);
+
+    /* Совместимость со старыми --vy-* */
+    --vy-blue: var(--campus-blue);
+    --vy-blue-light: var(--campus-blue-light);
+    --vy-yellow: var(--campus-yellow-brand);
+    --vy-yellow-hover: var(--campus-cta-hover);
+    --vy-bg: var(--campus-bg);
+    --vy-white: var(--campus-surface);
+    --vy-text: var(--campus-text);
+    --vy-text-muted: var(--campus-text-muted);
+    --vy-border: var(--campus-border);
+    --vy-border-light: var(--campus-border-light);
+    --vy-table-head: #F1F5F9;
+    --vy-green: var(--campus-success);
+    --vy-danger: var(--campus-danger);
+    --vy-gradient: var(--campus-gradient);
+    --vy-shadow: var(--shadow-clay);
+    --vy-shadow-hover: var(--shadow-clay-hover);
+    --vy-radius: var(--campus-radius-sm);
+    --vy-radius-modal: var(--campus-radius-modal);
+    --vy-container: var(--campus-container);
+    --vy-transition: var(--campus-transition);
+}
+
+h1, h2, h3, h4, .heading-brand {
+    font-family: Manrope, Inter, sans-serif;
+    color: var(--campus-blue-deep);
+    line-height: 1.25;
+}
+
+.heading-brand::first-letter {
+    color: var(--campus-blue);
+}
+
+/* Заголовки на синем/тёмном фоне — не наследуют --campus-blue-deep */
+.hero h1,
+.hero h2,
+.hero h3,
+.hero h4,
+.hero .heading-brand,
+.bento-welcome h1,
+.bento-welcome h2,
+.bento-welcome .heading-brand,
+.schedule-header h1,
+.schedule-header h2,
+.schedule-header h3,
+.schedule-header .heading-brand {
+    color: #fff;
+}
+
+.hero .heading-brand::first-letter,
+.bento-welcome .heading-brand::first-letter,
+.schedule-header .heading-brand::first-letter {
+    color: var(--campus-cta);
+}
+
+body {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--campus-bg);
+    color: var(--campus-text);
+    line-height: 1.5;
+}

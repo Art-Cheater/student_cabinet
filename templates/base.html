@@ -3,122 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#2B587A">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="ВятГУ">
-    <title>Личный кабинет студента ВятГУ</title>
+    <meta name="theme-color" content="#0039A6">
+    <title>Личный кабинет ВятГУ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='campus-tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vyatsu-brand.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='campus-layout.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='icons/icon.svg') }}" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon.svg') }}">
     <link rel="manifest" href="{{ url_for('pwa_manifest') }}">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}" data-user-role="{{ session.role or '' }}">
+    {% set ep = request.endpoint %}
     <nav class="site-nav" aria-label="Основная навигация">
-        <div class="nav-container">
-            <div class="logo">
-                <a href="/">ВятГУ</a>
-            </div>
-            <button type="button"
-                    class="nav-toggle"
-                    id="navToggle"
-                    aria-expanded="false"
-                    aria-controls="nav-menu"
-                    aria-label="Открыть меню">
-                <span class="nav-toggle-bar" aria-hidden="true"></span>
-                <span class="nav-toggle-bar" aria-hidden="true"></span>
-                <span class="nav-toggle-bar" aria-hidden="true"></span>
+        <div class="nav-container nav-container--wide">
+            <div class="logo"><a href="/">ВятГУ</a></div>
+            <button type="button" class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Меню">
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
             </button>
-            <div class="nav-backdrop" id="navBackdrop" hidden aria-hidden="true"></div>
+            <div class="nav-backdrop" id="navBackdrop" hidden></div>
             <div class="nav-links" id="nav-menu">
                 <div class="nav-main-links">
-                    <a href="/" class="{% if request.path == '/' %}active{% endif %}">Главная</a>
+                    <a href="/" class="{% if ep == 'index' %}nav-link-active{% endif %}">Главная</a>
                     {% if session.user_id %}
-                        <a href="/dashboard" class="{% if request.path == '/dashboard' %}active{% endif %}">Кабинет</a>
-                        <a href="/schedule" class="{% if request.path == '/schedule' %}active{% endif %}">Расписание</a>
-                        <a href="/appointment" class="{% if request.path == '/appointment' %}active{% endif %}">Запись</a>
+                        {% if session.role == 'student' %}
+                            <a href="{{ url_for('dashboard') }}" class="{% if ep == 'dashboard' %}nav-link-active{% endif %}">Кабинет</a>
+                            <a href="{{ url_for('schedule_page') }}" class="{% if ep == 'schedule_page' %}nav-link-active{% endif %}">Расписание</a>
+                            <a href="{{ url_for('appointment_list') }}" class="{% if ep in ('appointment_list', 'appointment_teacher') %}nav-link-active{% endif %}">Запись</a>
+                        {% elif session.role == 'teacher' %}
+                            <a href="{{ url_for('teacher_dashboard') }}" class="{% if ep == 'teacher_dashboard' %}nav-link-active{% endif %}">Кабинет</a>
+                            <a href="{{ url_for('teacher_slots') }}" class="{% if ep == 'teacher_slots' %}nav-link-active{% endif %}">Слоты</a>
+                            <a href="{{ url_for('teacher_schedule') }}" class="{% if ep == 'teacher_schedule' %}nav-link-active{% endif %}">Расписание</a>
+                        {% elif session.role == 'admin' %}
+                            <a href="{{ url_for('admin_panel', tab='students') }}" class="{% if ep == 'admin_panel' and request.args.get('tab', 'students') == 'students' %}nav-link-active{% endif %}">Студенты</a>
+                            <a href="{{ url_for('admin_panel', tab='teachers') }}" class="{% if ep == 'admin_panel' and request.args.get('tab') == 'teachers' %}nav-link-active{% endif %}">Преподаватели</a>
+                            <a href="{{ url_for('admin_panel', tab='schedule') }}" class="{% if ep == 'admin_panel' and request.args.get('tab') == 'schedule' %}nav-link-active{% endif %}">Расписание</a>
+                            <a href="{{ url_for('admin_panel', tab='help') }}" class="{% if ep == 'admin_panel' and request.args.get('tab') == 'help' %}nav-link-active{% endif %}">Справка VK</a>
+                        {% endif %}
                     {% else %}
-                        <a href="/login" class="{% if request.path == '/login' %}active{% endif %}">Вход</a>
+                        <a href="{{ url_for('login') }}" class="{% if ep == 'login' %}nav-link-active{% endif %}">Вход</a>
                     {% endif %}
-                    <a href="/news" class="{% if request.path == '/news' %}active{% endif %}">Новости</a>
-                    <a href="/map" class="{% if request.path == '/map' %}active{% endif %}">Карта</a>
-                    <a href="/faq" class="{% if request.path == '/faq' %}active{% endif %}">Вопросы</a>
-                    <a href="/admin" class="{% if request.path.startswith('/admin') %}active{% endif %}">Админ</a>
+                    <a href="{{ url_for('news') }}" class="{% if ep == 'news' %}nav-link-active{% endif %}">Новости</a>
+                    <a href="{{ url_for('map') }}" class="{% if ep == 'map' %}nav-link-active{% endif %}">Карта</a>
+                    <a href="{{ url_for('faq') }}" class="{% if ep == 'faq' %}nav-link-active{% endif %}">Вопросы</a>
                 </div>
                 {% if session.user_id %}
                     <div class="nav-actions">
-                        <a href="/logout" class="logout-link">Выход</a>
+                        <div class="nav-user-menu">
+                            <button type="button" class="nav-user-avatar" id="navUserToggle" aria-expanded="false" aria-haspopup="true" title="{{ session.user_name }}">
+                                {{ (session.user_name or '?')[:1]|upper }}
+                            </button>
+                            <div class="nav-user-dropdown" id="navUserDropdown" hidden>
+                                <p class="nav-user-dropdown-name">{{ session.user_name }}</p>
+                                <a href="{{ url_for('logout') }}" class="nav-logout-btn">Выйти</a>
+                            </div>
+                        </div>
                     </div>
                 {% endif %}
             </div>
         </div>
     </nav>
-    
-    <div class="container">
-        {% with messages = get_flashed_messages() %}
+    <div class="container {% block container_class %}{% endblock %}">
+        {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div class="flash-messages">
-                    {% for message in messages %}
-                        <div class="flash">{{ message }}</div>
+                    {% for category, message in messages %}
+                    <div class="flash {% if category == 'warning' %}flash-warning{% endif %}">{{ message }}</div>
                     {% endfor %}
                 </div>
             {% endif %}
         {% endwith %}
-        
         {% block content %}{% endblock %}
     </div>
-    
-    <footer>
-        <p>© 2026 Вятский государственный университет | Личный кабинет студента</p>
-    </footer>
+    <footer><p>© 2026 ВятГУ | Личный кабинет</p></footer>
     <script>
         (function () {
             var toggle = document.getElementById('navToggle');
             var backdrop = document.getElementById('navBackdrop');
             var menu = document.getElementById('nav-menu');
-            if (!toggle || !backdrop || !menu) return;
-
-            function openMenu() {
-                document.body.classList.add('nav-menu-open');
-                toggle.setAttribute('aria-expanded', 'true');
-                toggle.setAttribute('aria-label', 'Закрыть меню');
-                backdrop.hidden = false;
-                backdrop.setAttribute('aria-hidden', 'false');
-            }
+            if (!toggle || !menu) return;
             function closeMenu() {
                 document.body.classList.remove('nav-menu-open');
                 toggle.setAttribute('aria-expanded', 'false');
-                toggle.setAttribute('aria-label', 'Открыть меню');
-                backdrop.hidden = true;
-                backdrop.setAttribute('aria-hidden', 'true');
+                if (backdrop) backdrop.hidden = true;
             }
-            function toggleMenu() {
-                if (document.body.classList.contains('nav-menu-open')) closeMenu();
-                else openMenu();
+            function openMenu() {
+                document.body.classList.add('nav-menu-open');
+                toggle.setAttribute('aria-expanded', 'true');
+                if (backdrop) backdrop.hidden = false;
             }
+            toggle.addEventListener('click', function () {
+                document.body.classList.contains('nav-menu-open') ? closeMenu() : openMenu();
+            });
+            if (backdrop) backdrop.addEventListener('click', closeMenu);
+            menu.querySelectorAll('.nav-main-links a').forEach(function (a) { a.addEventListener('click', closeMenu); });
 
-            toggle.addEventListener('click', function (e) {
-                e.stopPropagation();
-                toggleMenu();
-            });
-            backdrop.addEventListener('click', closeMenu);
-            menu.querySelectorAll('a').forEach(function (a) {
-                a.addEventListener('click', closeMenu);
-            });
-            window.addEventListener('resize', function () {
-                if (window.matchMedia('(min-width: 769px)').matches) closeMenu();
-            });
-            document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape') closeMenu();
-            });
+            var userToggle = document.getElementById('navUserToggle');
+            var userDropdown = document.getElementById('navUserDropdown');
+            if (userToggle && userDropdown) {
+                userToggle.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var open = !userDropdown.hidden;
+                    userDropdown.hidden = open;
+                    userToggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+                });
+                document.addEventListener('click', function () {
+                    userDropdown.hidden = true;
+                    userToggle.setAttribute('aria-expanded', 'false');
+                });
+                userDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+            }
         })();
-
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
                 navigator.serviceWorker.register('{{ url_for("pwa_service_worker") }}').catch(function () {});
             });
         }
     </script>
+    <script src="{{ url_for('static', filename='campus-motion.js') }}" defer></script>
 </body>
 </html>

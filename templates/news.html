@@ -8,6 +8,10 @@
 
 {% if parse_error %}
     <div class="hint" style="margin-bottom: 1rem;">{{ parse_error }}</div>
+    <div class="hint" style="margin-bottom: 1rem;">
+        Если показан кэш или лента без токена VK, даты могут не совпадать с группой —
+        задайте <code>VK_ACCESS_TOKEN</code> в .env для точных дат публикаций.
+    </div>
 {% endif %}
 
 {% if news %}

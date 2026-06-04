@@ -1,0 +1,860 @@
+/* ВятГУ — clay UI (токены в campus-tokens.css) */
+
+.container {
+    max-width: var(--vy-container);
+    padding: 0 24px;
+}
+
+@media (min-width: 1024px) {
+    body.layout-wide .container {
+        max-width: var(--vy-container);
+        padding: 0 24px;
+    }
+    .nav-container--wide {
+        max-width: var(--vy-container);
+        padding: 0 24px;
+    }
+}
+
+/* --- Шапка --- */
+nav.site-nav,
+nav {
+    background: var(--vy-gradient);
+    box-shadow: 0 6px 20px rgba(11, 43, 91, 0.18);
+    padding: 0.85rem 0;
+    border-radius: 0 0 20px 20px;
+}
+
+.nav-container {
+    max-width: var(--vy-container);
+    padding: 0 24px;
+}
+
+.logo a {
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: 0.03em;
+}
+
+.nav-links a {
+    transition: var(--vy-transition);
+    border-radius: 8px;
+}
+
+.nav-links a:hover {
+    background: rgba(255, 215, 0, 0.15);
+    color: #fff;
+}
+
+.nav-links a.nav-link-active,
+.nav-main-links a.nav-tab-active {
+    font-weight: 700;
+    background: rgba(255, 215, 0, 0.25);
+    border-bottom: 3px solid var(--vy-yellow);
+    border-radius: 8px 8px 0 0;
+    text-decoration: none;
+}
+
+.nav-user-menu {
+    position: relative;
+}
+
+.nav-user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--vy-yellow);
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--vy-transition);
+    padding: 0;
+}
+
+.nav-user-avatar:hover {
+    background: rgba(255, 215, 0, 0.3);
+    border-color: #fff;
+}
+
+.nav-user-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    min-width: 200px;
+    background: var(--vy-white);
+    border-radius: var(--vy-radius);
+    box-shadow: var(--vy-shadow-hover);
+    padding: 0.75rem 1rem;
+    z-index: 200;
+    border: 1px solid var(--vy-border-light);
+}
+
+.nav-user-dropdown[hidden] {
+    display: none;
+}
+
+.nav-user-dropdown-name {
+    font-weight: 600;
+    color: var(--vy-text);
+    margin: 0 0 0.65rem;
+    font-size: 0.9rem;
+}
+
+.nav-logout-btn {
+    display: block;
+    text-align: center;
+    background: var(--vy-yellow);
+    color: var(--vy-blue);
+    font-weight: 700;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: var(--vy-transition);
+}
+
+.nav-logout-btn:hover {
+    background: var(--vy-yellow-hover);
+    color: var(--vy-blue);
+}
+
+.nav-toggle {
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(0, 57, 166, 0.4);
+}
+
+footer {
+    background: var(--vy-blue);
+    color: #fff;
+}
+
+/* --- Кнопки --- */
+.btn {
+    border-radius: var(--vy-radius);
+    transition: var(--vy-transition);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--campus-blue-deep) 0%, var(--campus-blue) 100%);
+    color: #fff;
+    border-radius: var(--campus-radius-sm);
+    font-weight: 600;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #082449 0%, var(--campus-blue) 100%);
+    color: #fff;
+    box-shadow: var(--shadow-clay-hover);
+    transform: scale(1.02);
+}
+
+.btn-accent,
+.btn-book {
+    background: var(--campus-cta) !important;
+    color: var(--campus-blue-deep) !important;
+    border: none;
+    border-radius: var(--campus-radius-sm);
+    font-weight: 700;
+}
+
+.btn-accent:hover,
+.btn-book:hover {
+    background: var(--campus-cta-hover) !important;
+    color: var(--campus-blue-deep) !important;
+    transform: scale(1.02);
+}
+
+.btn-success {
+    background: var(--campus-success) !important;
+    color: #fff !important;
+    border: none;
+    font-weight: 600;
+}
+
+.btn-success:hover {
+    background: #0d9668 !important;
+    color: #fff !important;
+}
+
+.btn-outline {
+    color: var(--vy-blue);
+    border-color: var(--vy-blue);
+}
+
+.btn-outline:hover {
+    background: rgba(0, 57, 166, 0.06);
+}
+
+.btn-ghost {
+    background: var(--vy-bg);
+    color: var(--vy-text-muted);
+    border-color: var(--vy-border);
+}
+
+button:not(.btn):not(.map-filter):not(.map-locate-btn):not(.map-route-btn):not(.map-list-row):not(.modal-close):not(.nav-toggle):not(.nav-user-avatar):not(.group-picker-tag button) {
+    background: var(--vy-gradient);
+    border-radius: var(--vy-radius);
+}
+
+.hero {
+    background: var(--vy-gradient);
+    border-radius: var(--campus-radius-hero);
+    box-shadow: var(--shadow-clay-hover);
+    color: #fff;
+}
+
+.hero h1,
+.hero h2,
+.hero h3,
+.hero .heading-brand {
+    color: #fff;
+}
+
+.hero .heading-brand::first-letter {
+    color: var(--campus-cta);
+}
+
+.hero .btn-primary {
+    background: var(--vy-yellow);
+    color: var(--vy-blue);
+    font-weight: 700;
+}
+
+.hero .btn-primary:hover {
+    background: var(--vy-yellow-hover);
+    color: var(--vy-blue);
+}
+
+.hero .btn-secondary {
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    color: #fff;
+}
+
+.hero .btn-secondary:hover {
+    border-color: var(--vy-yellow);
+    background: rgba(255, 215, 0, 0.2);
+}
+
+/* --- Формы --- */
+.form-group input,
+.form-group select,
+.form-group textarea {
+    border: 1px solid var(--vy-border);
+    border-radius: 8px;
+    transition: var(--vy-transition);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--vy-blue);
+    box-shadow: 0 0 0 3px rgba(0, 57, 166, 0.15);
+}
+
+.auth-form,
+.card,
+.feature {
+    border-radius: var(--campus-radius-clay);
+    box-shadow: var(--shadow-clay);
+    border: 1px solid var(--campus-border);
+    background: var(--campus-surface);
+}
+
+.feature:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-clay-hover), var(--shadow-clay-glow);
+}
+
+.flash {
+    border-radius: var(--campus-radius-sm);
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--campus-blue-deep);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.flash-warning {
+    background: var(--campus-warning-bg);
+    color: var(--campus-warning-text);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+/* --- Приветствие дашбордов --- */
+.dashboard-welcome {
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 3px solid var(--vy-yellow);
+}
+
+.dashboard-welcome h1 {
+    font-size: 1.85rem;
+    font-weight: 700;
+    color: var(--vy-blue);
+    margin: 0 0 0.35rem;
+}
+
+.dashboard-welcome .welcome-sub {
+    color: var(--vy-text-muted);
+    margin: 0;
+    font-size: 1rem;
+}
+
+.student-dashboard-page .dashboard-welcome {
+    border-bottom-color: var(--vy-blue);
+}
+
+.teacher-dashboard-page .dashboard-welcome.teacher-dashboard-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 3px solid var(--vy-yellow);
+}
+
+.teacher-dashboard-page .dashboard-welcome h1 {
+    font-size: 1.65rem;
+}
+
+.admin-dashboard-page .dashboard-welcome {
+    border-bottom-color: var(--vy-blue);
+    border-left: 4px solid var(--vy-blue);
+    padding-left: 1rem;
+}
+
+.admin-dashboard-page .dashboard-welcome h1 {
+    font-size: 1.5rem;
+}
+
+/* --- Карточки-виджеты --- */
+.dashboard-cards {
+    gap: 1.25rem;
+}
+
+.dash-card {
+    display: flex;
+    align-items: center;
+    gap: 1.15rem;
+    background: var(--campus-surface);
+    padding: 1.35rem 1.5rem;
+    border-radius: var(--campus-radius-clay);
+    box-shadow: var(--shadow-clay);
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid var(--campus-border);
+    transition: var(--campus-transition);
+    opacity: 0;
+    transform: translateY(12px);
+}
+
+.dash-card.reveal-visible,
+.no-motion .dash-card {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.dash-card:hover,
+.dash-card--lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-clay-hover), var(--shadow-clay-glow);
+    border-color: var(--campus-border);
+}
+
+.dash-card--lift .dash-card__arrow {
+    transition: transform 0.2s ease;
+}
+
+.dash-card--lift:hover .dash-card__arrow {
+    transform: translateX(6px);
+    color: var(--vy-blue);
+}
+
+.dash-card__icon {
+    flex-shrink: 0;
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.65rem;
+    border-radius: 12px;
+    background: rgba(0, 57, 166, 0.08);
+}
+
+.dash-card--accent .dash-card__icon {
+    background: rgba(255, 215, 0, 0.35);
+}
+
+.dash-card__body {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+}
+
+.dash-card__body h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--campus-blue-deep);
+    font-family: Manrope, Inter, sans-serif;
+}
+
+.dash-card__body p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--vy-text-muted);
+}
+
+.dash-card__arrow {
+    flex-shrink: 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--vy-yellow);
+    transition: transform 0.2s ease;
+}
+
+.dash-card:hover .dash-card__arrow {
+    transform: translateX(4px);
+    color: var(--vy-blue);
+}
+
+a.card-link {
+    border-radius: var(--vy-radius);
+    box-shadow: var(--vy-shadow);
+    background: var(--vy-white);
+}
+
+a.card-link:hover {
+    box-shadow: var(--vy-shadow-hover);
+}
+
+a.card-link .card-arrow {
+    color: var(--vy-blue);
+}
+
+.card-icon {
+    filter: none;
+}
+
+.page-header h1 {
+    color: var(--vy-blue);
+    font-weight: 700;
+}
+
+.hint {
+    color: var(--vy-text-muted);
+}
+
+/* --- Админ: таблицы --- */
+.admin-panel-page table.bookings-list,
+.bookings-list {
+    border-collapse: collapse;
+    border-radius: var(--vy-radius);
+    overflow: hidden;
+    box-shadow: var(--vy-shadow);
+}
+
+.admin-panel-page table.bookings-list thead th,
+.bookings-list thead th {
+    background: var(--vy-table-head);
+    color: var(--vy-blue);
+    font-weight: 600;
+    border-bottom: 2px solid var(--vy-blue);
+}
+
+.admin-panel-page table.bookings-list tbody tr:nth-child(even),
+.bookings-list tbody tr:nth-child(even) {
+    background: var(--vy-bg);
+}
+
+.admin-panel-page table.bookings-list tbody tr:hover,
+.bookings-list tbody tr:hover {
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.admin-students-toolbar {
+    background: var(--campus-surface);
+    border: 1px solid var(--campus-border);
+    border-radius: var(--campus-radius-clay);
+    box-shadow: var(--shadow-clay);
+    padding: 1rem;
+}
+
+.admin-panel-page {
+    border-top: 4px solid var(--campus-blue);
+    padding-top: 0.5rem;
+}
+
+.admin-panel-page table.bookings-list {
+    border-radius: var(--campus-radius-clay);
+    border: 1px solid var(--campus-border);
+}
+
+/* --- Преподаватель --- */
+.teacher-dashboard-page .teacher-slots-sidebar,
+.teacher-dashboard-page .teacher-bookings-panel {
+    border-radius: var(--campus-radius-clay);
+    border: 1px solid var(--campus-border);
+    box-shadow: var(--shadow-clay);
+    background: var(--campus-surface);
+    padding: 1.25rem;
+}
+
+.slot-card.active {
+    border-color: var(--vy-blue);
+    background: rgba(0, 57, 166, 0.04);
+}
+
+.slot-card-date {
+    color: var(--vy-blue);
+}
+
+.teacher-card {
+    border: 1px solid var(--campus-border);
+    box-shadow: var(--shadow-clay);
+    border-radius: var(--campus-radius-clay);
+    background: var(--campus-surface);
+}
+
+.teacher-card:hover {
+    box-shadow: var(--shadow-clay-hover), var(--shadow-clay-glow);
+    transform: translateY(-4px);
+}
+
+/* --- Карта --- */
+.map-canvas-wrap #vyatsuMap {
+    min-height: 420px;
+    width: 100%;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.map-filter.active {
+    background: var(--vy-blue);
+    border-color: var(--vy-blue);
+}
+
+.map-locate-btn {
+    background: rgba(255, 215, 0, 0.25);
+    border-color: var(--vy-yellow);
+    color: var(--vy-blue);
+    font-weight: 600;
+}
+
+.map-route-btn {
+    background: var(--vy-gradient) !important;
+    color: #fff !important;
+    width: 100%;
+}
+
+.map-route-btn:hover {
+    background: linear-gradient(135deg, #002d85 0%, #0039A6 100%) !important;
+}
+
+.map-list-row.active {
+    border-color: var(--vy-blue);
+}
+
+.map-list-row:hover {
+    background: rgba(255, 215, 0, 0.12);
+}
+
+/* --- Модалки (bottom-sheet) --- */
+.modal-box,
+.event-modal-box {
+    border-radius: 24px 24px 8px 8px;
+    box-shadow: var(--shadow-clay-hover);
+    border: 1px solid var(--campus-border);
+    transform: translate(8%, 8%) scale(0.96);
+    opacity: 0;
+    transition: transform 0.35s var(--campus-ease), opacity 0.3s ease;
+}
+
+.modal-overlay.open .modal-box,
+.modal-overlay.open .event-modal-box {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+}
+
+.modal-box h3,
+.event-modal-box h3 {
+    color: var(--campus-blue-deep);
+    font-weight: 700;
+    font-family: Manrope, Inter, sans-serif;
+    padding-left: 12px;
+    border-left: 4px solid var(--campus-cta);
+}
+
+.modal-overlay {
+    backdrop-filter: blur(6px);
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 1rem;
+}
+
+.modal-overlay.open {
+    display: flex;
+}
+
+@media (max-width: 768px) {
+    .modal-overlay {
+        align-items: flex-end;
+        justify-content: center;
+        padding: 0;
+    }
+    .modal-box,
+    .event-modal-box {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        border-radius: 24px 24px 0 0;
+    }
+}
+
+/* --- Разное --- */
+.map-key-warning,
+.flash-warning {
+    border-radius: var(--vy-radius);
+}
+
+.status-badge.pending {
+    background: rgba(255, 215, 0, 0.35);
+    color: #856404;
+}
+
+.status-badge.confirmed {
+    background: rgba(40, 167, 69, 0.15);
+    color: var(--vy-green);
+}
+
+.feature h3 {
+    color: var(--vy-blue);
+}
+
+.news-preview h2 {
+    color: var(--vy-blue);
+    font-weight: 700;
+}
+
+.home-news-preview {
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--vy-border-light);
+}
+
+.home-news-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.home-news-header h2 {
+    color: var(--vy-blue);
+    margin: 0;
+}
+
+.news-item--compact {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 1rem;
+    align-items: start;
+}
+
+.student-cabinet-card {
+    background: var(--campus-surface);
+    border-radius: var(--campus-radius-clay);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-clay);
+    border: 1px solid var(--campus-border);
+}
+
+.student-cabinet-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.student-cabinet-qr img {
+    max-width: 220px;
+    border-radius: var(--vy-radius);
+}
+
+.student-photo-block {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--vy-border-light);
+}
+
+.student-photo-preview img {
+    max-width: 280px;
+    width: 100%;
+    border-radius: var(--vy-radius);
+    object-fit: cover;
+}
+
+.student-photo-placeholder {
+    padding: 2rem;
+    background: var(--vy-bg);
+    border-radius: var(--vy-radius);
+    text-align: center;
+    color: var(--vy-text-muted);
+}
+
+.teacher-profile-card {
+    background: var(--campus-surface);
+    padding: 1.5rem;
+    border-radius: var(--campus-radius-clay);
+    box-shadow: var(--shadow-clay);
+    border: 1px solid var(--campus-border);
+}
+
+.teacher-profile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
+.slot-pill-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.slot-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    padding: 0.85rem 1rem;
+    background: var(--campus-surface);
+    border: 1px solid var(--campus-border);
+    border-radius: var(--campus-radius-clay);
+    box-shadow: var(--shadow-clay);
+    text-decoration: none;
+    color: inherit;
+    transition: var(--campus-transition);
+    width: 100%;
+}
+
+.slot-pill:hover {
+    border-color: var(--campus-blue);
+    box-shadow: var(--shadow-clay-hover), var(--shadow-clay-glow);
+    transform: translateY(-2px);
+}
+
+.slot-pill.active {
+    border-color: var(--vy-blue);
+    background: rgba(0, 57, 166, 0.06);
+    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.45);
+}
+
+.slot-pill-date {
+    font-weight: 700;
+    color: var(--vy-blue);
+}
+
+.slot-pill-time {
+    font-size: 1.05rem;
+}
+
+.slot-pill-topic {
+    font-size: 0.9rem;
+    color: var(--vy-text-muted);
+}
+
+.page-breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.date-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0 1.5rem;
+}
+
+.date-pill {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    border: 1px solid var(--campus-border);
+    border-radius: var(--campus-radius-clay);
+    box-shadow: var(--shadow-clay);
+    text-decoration: none;
+    color: var(--vy-text);
+    background: var(--campus-surface);
+    transition: var(--campus-transition);
+    min-width: 110px;
+}
+
+.date-pill:hover {
+    border-color: var(--campus-blue);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-clay-hover), var(--shadow-clay-glow);
+}
+
+.date-pill.active {
+    border-color: var(--campus-blue);
+    background: rgba(255, 193, 7, 0.2);
+    font-weight: 600;
+    box-shadow: var(--shadow-clay-glow);
+}
+
+.date-pill-meta {
+    font-size: 0.8rem;
+    color: var(--vy-text-muted);
+}
+
+.appointment-teacher-card .teacher-card-header {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.section-title {
+    color: var(--vy-blue);
+    font-size: 1.15rem;
+    margin: 1.25rem 0 0.75rem;
+}
+
+.admin-student-photo-preview {
+    max-width: 120px;
+    border-radius: 8px;
+    margin: 0.5rem 0;
+    display: block;
+}
+
+#event-modal-teacher-files-wrap h4,
+#event-modal-my-files-wrap h4 {
+    color: var(--vy-blue);
+    margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+    .dashboard-cards {
+        grid-template-columns: 1fr;
+    }
+    .nav-user-dropdown {
+        right: 0;
+        left: auto;
+    }
+    .dash-card:hover,
+    .teacher-card:hover,
+    .feature:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-clay);
+    }
+}

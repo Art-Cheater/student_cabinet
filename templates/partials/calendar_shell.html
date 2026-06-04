@@ -1,0 +1,52 @@
+{# Requires: cal (nav dict), events, calendar_base_url (endpoint name), extra_params dict optional #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calendar.css') }}">
+<div class="calendar-page">
+    <div class="calendar-toolbar">
+        <h2 class="month-title">{{ cal.month_label }}</h2>
+        <div class="view-tabs">
+            <a href="{{ url_for(calendar_base_url, view='day', day=cal.day, week=cal.week_start, **extra_params) }}"
+               class="{% if cal.view == 'day' %}active{% endif %}">День</a>
+            <a href="{{ url_for(calendar_base_url, view='week', week=cal.week_start, **extra_params) }}"
+               class="{% if cal.view == 'week' %}active{% endif %}">Неделя</a>
+            <a href="{{ url_for(calendar_base_url, view='month', month=cal.month, **extra_params) }}"
+               class="{% if cal.view == 'month' %}active{% endif %}">Месяц</a>
+        </div>
+        <div class="nav-arrows">
+            {% if cal.view == 'month' %}
+                <a href="{{ url_for(calendar_base_url, view='month', month=cal.prev_month, **extra_params) }}">&larr;</a>
+                <a href="{{ url_for(calendar_base_url, view='month', month=cal.next_month, **extra_params) }}">&rarr;</a>
+            {% elif cal.view == 'day' %}
+                <a href="{{ url_for(calendar_base_url, view='day', day=cal.prev_day, week=cal.week_start, **extra_params) }}">&larr;</a>
+                <a href="{{ url_for(calendar_base_url, view='day', day=cal.today, week=cal.week_start, **extra_params) }}">Сегодня</a>
+                <a href="{{ url_for(calendar_base_url, view='day', day=cal.next_day, week=cal.week_start, **extra_params) }}">&rarr;</a>
+            {% else %}
+                <a href="{{ url_for(calendar_base_url, view='week', week=cal.prev_week, **extra_params) }}">&larr; Неделя</a>
+                <a href="{{ url_for(calendar_base_url, view='week', week=cal.next_week, **extra_params) }}">Неделя &rarr;</a>
+            {% endif %}
+        </div>
+    </div>
+    {% if calendar_hint %}
+    <div class="calendar-empty-hint">{{ calendar_hint }}</div>
+    {% endif %}
+    <div class="calendar-scroll">
+        <div id="calendar-root" class="calendar-wrap"
+             data-view="{{ cal.view }}"
+             data-week-start="{{ cal.week_start }}"
+             data-day="{{ cal.day }}"
+             data-month="{{ cal.month }}">
+            <div class="calendar-grid"></div>
+        </div>
+    </div>
+</div>
+<script type="application/json" id="calendar-events">{{ events|tojson }}</script>
+<script type="application/json" id="calendar-notes">{{ (notes_map or {})|tojson }}</script>
+<script>
+window.calendarGoDay = function(day) {
+    var u = new URL(window.location.href);
+    u.searchParams.set('view', 'day');
+    u.searchParams.set('day', day);
+    u.searchParams.set('week', day);
+    window.location.href = u.toString();
+};
+</script>
+<script src="{{ url_for('static', filename='js/calendar.js') }}"></script>

@@ -1,52 +1,119 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="hero">
-    <h1>Личный кабинет студента</h1>
-    {% if session.user_id %}
-        <p>Вы авторизованы. Здесь можно быстро перейти к нужным разделам.</p>
-    {% else %}
-        <p>Добро пожаловать в цифровое пространство ВятГУ</p>
-    {% endif %}
-    <div class="buttons">
-        {% if session.user_id %}
-            <a href="/dashboard" class="btn btn-primary">Открыть кабинет</a>
-            <a href="/schedule" class="btn btn-secondary">Моё расписание</a>
+{% if session.user_id %}
+<section class="bento-grid">
+    <div class="bento-cell bento-welcome">
+        <h1 class="heading-brand">С возвращением, {{ session.user_name }}!</h1>
+        <p class="welcome-sub">Цифровой кампус ВятГУ</p>
+    </div>
+
+    {% if session.role == 'student' %}
+    <a href="{{ url_for('schedule_page') }}" class="bento-cell bento-span-2 bento-schedule">
+        <span class="bento-icon" aria-hidden="true">📅</span>
+        <h3>Расписание</h3>
+        <p>Группа: {{ session.group or '—' }}</p>
+        {% if today_events %}
+        <ul class="bento-today-list">
+            {% for ev in today_events %}
+            <li>
+                {% if ev.start and 'T' in ev.start %}{{ ev.start.split('T')[1][:5] }}{% endif %}
+                — {{ ev.title or ev.subject or 'Занятие' }}
+            </li>
+            {% endfor %}
+        </ul>
         {% else %}
-            <a href="/login" class="btn btn-primary">Вход</a>
+        <p class="hint" style="margin-top:0.5rem;font-size:0.85rem;">Откройте расписание, чтобы увидеть пары на сегодня</p>
         {% endif %}
+        <span class="bento-arrow" aria-hidden="true">→</span>
+    </a>
+    <a href="{{ url_for('appointment_list') }}" class="bento-cell bento-appointment">
+        <span class="bento-icon" aria-hidden="true">📝</span>
+        <h3>Запись</h3>
+        <p>К преподавателю</p>
+        <span class="bento-arrow" aria-hidden="true">→</span>
+    </a>
+    {% elif session.role == 'teacher' %}
+    <a href="{{ url_for('teacher_schedule') }}" class="bento-cell bento-span-2 bento-schedule">
+        <span class="bento-icon" aria-hidden="true">📅</span>
+        <h3>Расписание</h3>
+        <p>Слоты приёма и пары</p>
+        <span class="bento-arrow" aria-hidden="true">→</span>
+    </a>
+    <a href="{{ url_for('teacher_slots') }}" class="bento-cell bento-appointment">
+        <span class="bento-icon" aria-hidden="true">🕐</span>
+        <h3>Слоты</h3>
+        <p>Записавшиеся студенты</p>
+        <span class="bento-arrow" aria-hidden="true">→</span>
+    </a>
+    {% elif session.role == 'admin' %}
+    <a href="{{ url_for('admin_panel') }}" class="bento-cell bento-span-2 bento-schedule">
+        <span class="bento-icon" aria-hidden="true">⚙️</span>
+        <h3>Админ-кабинет</h3>
+        <p>Студенты, преподаватели, расписание</p>
+        <span class="bento-arrow" aria-hidden="true">→</span>
+    </a>
+    {% endif %}
+
+    <a href="{{ url_for('map') }}" class="bento-cell bento-map">
+        <span class="bento-icon" aria-hidden="true">🗺️</span>
+        <h3>Карта</h3>
+        <p>Корпуса ВятГУ</p>
+        <span class="bento-arrow" aria-hidden="true">→</span>
+    </a>
+    <a href="{{ url_for('faq') }}" class="bento-cell bento-faq">
+        <span class="bento-icon" aria-hidden="true">❓</span>
+        <h3>Помощь</h3>
+        <p>Частые вопросы</p>
+        <span class="bento-arrow" aria-hidden="true">→</span>
+    </a>
+
+    <section class="bento-cell bento-news bento-span-2 reveal-on-scroll">
+        <div class="bento-news-inner">
+            <div class="home-news-header">
+                <h2 class="heading-brand">Новости</h2>
+                <a href="{{ url_for('news') }}" class="btn btn-outline btn-sm">Все новости</a>
+            </div>
+            {% if news_error and not news_preview %}
+            <p class="hint">{{ news_error }}</p>
+            {% endif %}
+            {% for item in news_preview %}
+            <article class="bento-news-item">
+                <h4>{{ item.title }}</h4>
+                {% if item.date %}<p class="hint">{{ item.date }}</p>{% endif %}
+                <p>{{ (item.summary or '')[:100] }}{% if (item.summary or '')|length > 100 %}…{% endif %}</p>
+            </article>
+            {% else %}
+            {% if not news_preview %}
+            <div class="skeleton skeleton-card" aria-hidden="true"></div>
+            <p class="hint">Новости из VK. <a href="{{ url_for('news') }}">Открыть раздел</a>.</p>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+</section>
+
+{% else %}
+<div class="hero">
+    <h1 class="heading-brand">Личный кабинет ВятГУ</h1>
+    <p>Добро пожаловать в цифровое пространство университета</p>
+    <div class="buttons">
+        <a href="{{ url_for('login') }}" class="btn btn-primary">Вход</a>
     </div>
 </div>
 
 <div class="features">
-    <div class="feature">
-        <h3>📅 Расписание занятий</h3>
-        <p>Актуальное расписание для вашей группы с автоматическим обновлением</p>
+    <div class="feature reveal-on-scroll">
+        <h3>Расписание занятий</h3>
+        <p>Актуальное расписание для вашей группы</p>
     </div>
-    <div class="feature">
-        <h3>🎓 Цифровой студенческий</h3>
-        <p>Оформляется администратором университета</p>
+    <div class="feature reveal-on-scroll">
+        <h3>Цифровой студенческий</h3>
+        <p>Студбилет в личном кабинете</p>
     </div>
-    <div class="feature">
-        <h3>🗺️ Карта корпусов</h3>
-        <p>Удобная навигация по всем учебным корпусам ВятГУ</p>
-    </div>
-    <div class="feature">
-        <h3>❓ Ответы на вопросы</h3>
-        <p>Часто задаваемые вопросы и помощь студентам</p>
+    <div class="feature reveal-on-scroll">
+        <h3>Карта корпусов</h3>
+        <p>Навигация по учебным корпусам</p>
     </div>
 </div>
-
-<div class="news-preview">
-    <h2>Последние новости</h2>
-    <div class="news-items">
-        <div class="news-item">
-            <h3>День открытых дверей</h3>
-            <p>Приглашаем абитуриентов и родителей 20 апреля</p>
-        </div>
-        <div class="news-item">
-            <h3>Студенческая конференция</h3>
-            <p>Прошла ежегодная студенческая конференция</p>
-        </div>
-    </div>
-</div>
+{% endif %}
 {% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block body_class %}layout-wide teacher-dashboard-page{% endblock %}
+{% block content %}
+<div class="dashboard-welcome teacher-dashboard-header">
+    <div>
+        <h1>С возвращением, {{ session.user_name }}!</h1>
+        <p class="welcome-sub">Кабинет преподавателя</p>
+    </div>
+    <a href="{{ url_for('teacher_schedule') }}" class="btn btn-primary">Открыть расписание</a>
+</div>
+
+<div class="teacher-profile-card">
+    {% if profile %}
+    <h2>Профиль</h2>
+    <p><strong>ФИО:</strong> {{ profile.last_name }} {{ profile.first_name }} {{ profile.middle_name or '' }}</p>
+    {% if profile.position_title %}<p><strong>Должность:</strong> {{ profile.position_title }}</p>{% endif %}
+    <p><strong>Кабинет:</strong> {{ profile.office_room or '—' }}</p>
+    <p><strong>Email:</strong> {{ profile.email }}</p>
+    {% else %}
+    <p class="hint">Профиль не найден.</p>
+    {% endif %}
+    <div class="teacher-profile-actions">
+        <a href="{{ url_for('teacher_slots') }}" class="btn btn-accent">Временные слоты и записи</a>
+        <a href="{{ url_for('teacher_schedule') }}" class="btn btn-outline">Создать новый слот</a>
+    </div>
+</div>
+{% endblock %}

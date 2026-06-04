@@ -10,6 +10,9 @@ venv/
 env/
 .env
 .env.*
+!.env.example
+uploads/
+private_storage/
 *.sqlite
 *.sqlite3
 *.log

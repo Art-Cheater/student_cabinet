@@ -1,7 +1,29 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="work-banner">
-    <h2>Раздел в разработке</h2>
-    <p>Мы дорабатываем онлайн-запись. Скоро можно будет выбрать преподавателя, дату и время прямо в кабинете.</p>
+<div class="page-header appointment-page reveal-on-scroll">
+    <h1 class="heading-brand">Запись к преподавателю</h1>
+    <p class="welcome-sub">Выберите преподавателя для просмотра свободных окон</p>
+</div>
+
+<div class="appointment-teachers">
+    {% for t in teachers %}
+    <article class="teacher-card appointment-teacher-card">
+        <div class="teacher-card-header">
+            <span class="dash-card__icon" aria-hidden="true">👨‍🏫</span>
+            <div>
+                <h3>{{ t.last_name }} {{ t.first_name }} {{ t.middle_name or '' }}</h3>
+                {% if t.position_title %}<p>{{ t.position_title }}</p>{% endif %}
+                {% if t.office_room %}<p class="hint">Кабинет: {{ t.office_room }}</p>{% endif %}
+            </div>
+        </div>
+        <a href="{{ url_for('appointment_teacher', teacher_id=t.id) }}" class="btn btn-primary btn-block">
+            Расписание приёма
+        </a>
+    </article>
+    {% else %}
+    <div class="admin-note">
+        <p>Преподаватели пока не добавлены. Обратитесь к администратору.</p>
+    </div>
+    {% endfor %}
 </div>
 {% endblock %}

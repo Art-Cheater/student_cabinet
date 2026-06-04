@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мокапы — Личный кабинет студента ВятГУ</title>
+    <style>
+        :root {
+            --nav-bg: linear-gradient(120deg, #10203f 0%, #1a2a4a 45%, #27406e 100%);
+            --hero-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --page-bg: #f5f7fa;
+            --text: #333;
+            --muted: #6b7280;
+            --card: #fff;
+            --accent: #667eea;
+            --border: #e5e7eb;
+            --shadow: 0 8px 22px rgba(16, 32, 63, 0.12);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #e8ecf2;
+            color: var(--text);
+            line-height: 1.45;
+        }
+
+        .doc-header {
+            text-align: center;
+            padding: 2.5rem 1.5rem 1.5rem;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .doc-header h1 {
+            font-size: 1.75rem;
+            color: #10203f;
+            margin-bottom: 0.5rem;
+        }
+
+        .doc-header p {
+            color: var(--muted);
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .toc {
+            max-width: 1100px;
+            margin: 1.5rem auto;
+            padding: 0 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .toc a {
+            padding: 0.4rem 0.85rem;
+            background: #fff;
+            border-radius: 999px;
+            text-decoration: none;
+            color: #1a2a4a;
+            font-size: 0.88rem;
+            border: 1px solid var(--border);
+        }
+
+        .toc a:hover { background: #eef2ff; }
+
+        .screen-section {
+            max-width: 1280px;
+            margin: 0 auto 3rem;
+            padding: 0 1rem;
+        }
+
+        .screen-section h2 {
+            font-size: 1.35rem;
+            color: #10203f;
+            margin-bottom: 0.35rem;
+            padding-top: 1rem;
+        }
+
+        .screen-section > p {
+            color: var(--muted);
+            font-size: 0.92rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .devices {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .device-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .device-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+        }
+
+        /* Desktop frame */
+        .frame-desktop {
+            width: 920px;
+            max-width: 100%;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+            overflow: hidden;
+            border: 1px solid #d1d5db;
+        }
+
+        .frame-desktop .chrome {
+            background: #f3f4f6;
+            padding: 0.55rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dot-r { background: #ef4444; }
+        .dot-y { background: #f59e0b; }
+        .dot-g { background: #22c55e; }
+
+        .chrome-url {
+            flex: 1;
+            margin-left: 0.5rem;
+            background: #fff;
+            border-radius: 6px;
+            padding: 0.25rem 0.65rem;
+            font-size: 0.72rem;
+            color: var(--muted);
+        }
+
+        /* Mobile frame */
+        .frame-mobile {
+            width: 320px;
+            background: #111;
+            border-radius: 28px;
+            padding: 10px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        }
+
+        .frame-mobile .notch {
+            width: 100px;
+            height: 22px;
+            background: #111;
+            border-radius: 0 0 14px 14px;
+            margin: -4px auto 6px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .frame-mobile .screen {
+            background: var(--page-bg);
+            border-radius: 20px;
+            overflow: hidden;
+            min-height: 580px;
+        }
+
+        /* App UI inside frames */
+        .app { font-size: 13px; background: var(--page-bg); min-height: 420px; }
+
+        .app-nav {
+            background: var(--nav-bg);
+            color: #fff;
+            padding: 0.65rem 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .app-nav .logo { font-weight: 700; font-size: 1rem; }
+
+        .app-nav .links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.2rem;
+            justify-content: flex-end;
+        }
+
+        .app-nav .links a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.68rem;
+            padding: 0.28rem 0.45rem;
+            border-radius: 6px;
+        }
+
+        .app-nav .links a.active {
+            background: #fff;
+            color: #1a2a4a;
+            font-weight: 600;
+        }
+
+        .app-nav .burger {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            padding: 6px;
+            border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 8px;
+        }
+
+        .app-nav .burger span {
+            display: block;
+            width: 18px;
+            height: 2px;
+            background: #fff;
+        }
+
+        .mobile-nav-open .app-nav .links {
+            display: flex;
+            flex-direction: column;
+            position: absolute;
+            right: 12px;
+            top: 48px;
+            background: #1a2a4a;
+            padding: 0.5rem;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            z-index: 5;
+        }
+
+        .mobile-nav-open .app-nav { position: relative; }
+
+        .frame-mobile .app-nav .links { display: none; }
+        .frame-mobile .app-nav .burger { display: flex; }
+
+        .app-body { padding: 0.85rem; }
+
+        .hero-m {
+            background: var(--hero-bg);
+            color: #fff;
+            text-align: center;
+            padding: 1.5rem 1rem;
+            border-radius: 10px;
+            margin-bottom: 0.85rem;
+        }
+
+        .hero-m h1 { font-size: 1.15rem; margin-bottom: 0.4rem; }
+        .hero-m p { font-size: 0.78rem; opacity: 0.95; margin-bottom: 0.75rem; }
+
+        .btn {
+            display: inline-block;
+            padding: 0.45rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .btn-primary { background: #fff; color: var(--accent); }
+        .btn-secondary {
+            background: #eef2ff;
+            color: #4338ca;
+            border: 1px solid #c7d2fe;
+        }
+
+        .features-m {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        .frame-mobile .features-m { grid-template-columns: 1fr; }
+
+        .feat {
+            background: var(--card);
+            padding: 0.65rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-size: 0.72rem;
+        }
+
+        .feat h3 { font-size: 0.8rem; margin-bottom: 0.25rem; }
+
+        .auth-m {
+            max-width: 340px;
+            margin: 0 auto;
+            background: var(--card);
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+
+        .auth-m h2 { font-size: 1rem; margin-bottom: 0.75rem; text-align: center; }
+
+        .field { margin-bottom: 0.6rem; }
+        .field label { display: block; font-size: 0.72rem; margin-bottom: 0.2rem; color: var(--muted); }
+        .field input {
+            width: 100%;
+            padding: 0.45rem 0.55rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.78rem;
+        }
+
+        .dash-title { font-size: 1rem; margin-bottom: 0.75rem; }
+
+        .cards-m {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.55rem;
+        }
+
+        .frame-mobile .cards-m { grid-template-columns: 1fr; }
+
+        .card-m {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .card-m .icon { font-size: 1.25rem; margin-bottom: 0.25rem; }
+        .card-m h3 { font-size: 0.82rem; margin-bottom: 0.2rem; }
+        .card-m p { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.45rem; }
+
+        .schedule-head {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.65rem;
+        }
+
+        .schedule-head h2 { font-size: 0.95rem; }
+        .filters { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+        .filters span {
+            font-size: 0.68rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 999px;
+            background: #e5e7eb;
+            color: #374151;
+        }
+        .filters span.on { background: #4338ca; color: #fff; }
+
+        .day-card {
+            background: var(--card);
+            border-radius: 10px;
+            margin-bottom: 0.55rem;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .day-title {
+            background: #eef2ff;
+            padding: 0.4rem 0.65rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #3730a3;
+        }
+
+        .lesson {
+            padding: 0.5rem 0.65rem;
+            border-top: 1px solid #f3f4f6;
+            font-size: 0.7rem;
+        }
+
+        .lesson strong { display: block; font-size: 0.76rem; margin-bottom: 0.15rem; }
+        .tag {
+            display: inline-block;
+            font-size: 0.62rem;
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+            background: #dbeafe;
+            color: #1d4ed8;
+            margin-left: 0.25rem;
+        }
+
+        .student-card-m {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+        }
+
+        .student-card-m .grid2 {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.65rem;
+            align-items: start;
+        }
+
+        .frame-mobile .student-card-m .grid2 { grid-template-columns: 1fr; }
+
+        .qr-box {
+            width: 90px;
+            height: 90px;
+            background: repeating-linear-gradient(
+                45deg,
+                #111 0 4px,
+                #fff 4px 8px
+            );
+            border-radius: 6px;
+            margin: 0 auto;
+        }
+
+        .frame-desktop .qr-box { width: 120px; height: 120px; }
+
+        .map-m {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 0.55rem;
+        }
+
+        .frame-mobile .map-m { grid-template-columns: 1fr; }
+
+        .map-canvas {
+            background: linear-gradient(160deg, #c8e6c9 0%, #a5d6a7 40%, #81c784 100%);
+            border-radius: 8px;
+            min-height: 140px;
+            position: relative;
+            border: 1px solid #81c784;
+        }
+
+        .map-pin {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #1a2a4a;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .map-pin:nth-child(1) { top: 30%; left: 40%; }
+        .map-pin:nth-child(2) { top: 55%; left: 60%; background: #2563eb; }
+        .map-pin:nth-child(3) { top: 45%; left: 25%; background: #059669; }
+
+        .loc-item {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.45rem;
+            margin-bottom: 0.4rem;
+            font-size: 0.68rem;
+        }
+
+        .loc-item strong { font-size: 0.74rem; }
+
+        .news-m .news-item {
+            display: flex;
+            gap: 0.55rem;
+            background: var(--card);
+            border-radius: 8px;
+            padding: 0.55rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .news-thumb {
+            width: 72px;
+            height: 56px;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #93c5fd, #6366f1);
+            border-radius: 6px;
+        }
+
+        .frame-mobile .news-thumb { width: 56px; height: 48px; }
+
+        .news-m h3 { font-size: 0.78rem; margin-bottom: 0.15rem; }
+        .news-m .date { font-size: 0.65rem; color: var(--muted); }
+
+        .app-footer {
+            text-align: center;
+            padding: 0.55rem;
+            font-size: 0.62rem;
+            color: var(--muted);
+            border-top: 1px solid var(--border);
+            margin-top: 0.75rem;
+        }
+
+        .frame-desktop .app { min-height: 480px; }
+        .frame-desktop .app-nav .links a { font-size: 0.72rem; }
+        .frame-desktop .hero-m h1 { font-size: 1.5rem; }
+        .frame-desktop .features-m { grid-template-columns: repeat(4, 1fr); }
+        .frame-desktop .cards-m { grid-template-columns: repeat(4, 1fr); }
+
+        @media print {
+            body { background: #fff; }
+            .screen-section { break-inside: avoid; page-break-inside: avoid; }
+            .frame-desktop, .frame-mobile { box-shadow: none; }
+        }
+
+        @media (max-width: 960px) {
+            .frame-desktop { width: 100%; }
+            .devices { flex-direction: column; align-items: center; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="doc-header">
+    <h1>Мокапы интерфейса</h1>
+    <p>Личный кабинет студента ВятГУ — визуальные макеты основных экранов для ПК и мобильных устройств (учебный проект).</p>
+</header>
+
+<nav class="toc">
+    <a href="#home">Главная</a>
+    <a href="#login">Вход</a>
+    <a href="#dashboard">Кабинет</a>
+    <a href="#schedule">Расписание</a>
+    <a href="#card">Студбилет</a>
+    <a href="#map">Карта</a>
+    <a href="#news">Новости</a>
+</nav>
+
+<!-- ========== ГЛАВНАЯ ========== -->
+<section class="screen-section" id="home">
+    <h2>1. Главная страница</h2>
+    <p>Лендинг с описанием возможностей и быстрыми действиями.</p>
+    <div class="devices">
+        <div class="device-wrap">
+            <span class="device-label">ПК</span>
+            <div class="frame-desktop">
+                <div class="chrome">
+                    <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+                    <span class="chrome-url">student-cabinet.vyatsu.ru /</span>
+                </div>
+                <div class="app">
+                    <nav class="app-nav">
+                        <span class="logo">ВятГУ</span>
+                        <div class="links">
+                            <a href="#" class="active">Главная</a>
+                            <a href="#">Кабинет</a>
+                            <a href="#">Расписание</a>
+                            <a href="#">Новости</a>
+                            <a href="#">Карта</a>
+                            <a href="#">Вопросы</a>
+                            <a href="#">Выход</a>
+                        </div>
+                    </nav>
+                    <div class="app-body">
+                        <div class="hero-m">
+                            <h1>Личный кабинет студента</h1>
+                            <p>Вы авторизованы. Быстрый переход к нужным разделам.</p>
+                            <a class="btn btn-primary" href="#">Открыть кабинет</a>
+                            <a class="btn btn-secondary" href="#" style="margin-left:0.4rem">Моё расписание</a>
+                        </div>
+                        <div class="features-m">
+                            <div class="feat"><h3>📅 Расписание</h3><p>Актуальное расписание группы</p></div>
+                            <div class="feat"><h3>🎓 Студбилет</h3><p>QR-код и данные для предъявления</p></div>
+                            <div class="feat"><h3>🗺️ Карта</h3><p>Корпуса и общежития ВятГУ</p></div>
+                            <div class="feat"><h3>❓ FAQ</h3><p>Ответы на частые вопросы</p></div>
+                        </div>
+                    </div>
+                    <footer class="app-footer">© 2026 ВятГУ | Личный кабинет студента</footer>
+                </div>
+            </div>
+        </div>
+
+        <div class="device-wrap">
+            <span class="device-label">Смартфон</span>
+            <div class="frame-mobile">
+                <div class="notch"></div>
+                <div class="screen mobile-nav-open">
+                    <div class="app">
+                        <nav class="app-nav">
+                            <span class="logo">ВятГУ</span>
+                            <div class="burger" aria-hidden="true"><span></span><span></span><span></span></div>
+                            <div class="links">
+                                <a href="#" class="active">Главная</a>
+                                <a href="#">Кабинет</a>
+                                <a href="#">Расписание</a>
+                                <a href="#">Новости</a>
+                            </div>
+                        </nav>
+                        <div class="app-body">
+                            <div class="hero-m">
+                                <h1>Личный кабинет</h1>
+                                <p>Цифровое пространство ВятГУ</p>
+                                <a class="btn btn-primary" href="#">Кабинет</a>
+                            </div>
+                            <div class="features-m">
+                                <div class="feat"><h3>📅 Расписание</h3><p>По вашей группе</p></div>
+                                <div class="feat"><h3>🎓 Студбилет</h3><p>Цифровой билет</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== ВХОД ========== -->
+<section class="screen-section" id="login">
+    <h2>2. Вход в систему</h2>
+    <p>Форма аутентификации по email и паролю.</p>
+    <div class="devices">
+        <div class="device-wrap">
+            <span class="device-label">ПК</span>
+            <div class="frame-desktop">
+                <div class="chrome"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+                    <span class="chrome-url">…/login</span></div>
+                <div class="app">
+                    <nav class="app-nav">
+                        <span class="logo">ВятГУ</span>
+                        <div class="links">
+                            <a href="#">Главная</a>
+                            <a href="#" class="active">Вход</a>
+                            <a href="#">Новости</a>
+                            <a href="#">Карта</a>
+                        </div>
+                    </nav>
+                    <div class="app-body">
+                        <div class="auth-m">
+                            <h2>Вход в личный кабинет</h2>
+                            <div class="field"><label>Email</label><input type="text" value="ivanov@vyatsu.ru" readonly></div>
+                            <div class="field"><label>Пароль</label><input type="password" value="••••••••" readonly></div>
+                            <a class="btn btn-primary" href="#" style="width:100%;text-align:center;display:block">Войти</a>
+                            <p style="font-size:0.68rem;color:var(--muted);margin-top:0.5rem;text-align:center">Доступ выдаётся администратором</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="device-wrap">
+            <span class="device-label">Смартфон</span>
+            <div class="frame-mobile">
+                <div class="notch"></div>
+                <div class="screen">
+                    <div class="app">
+                        <nav class="app-nav">
+                            <span class="logo">ВятГУ</span>
+                            <div class="burger"><span></span><span></span><span></span></div>
+                        </nav>
+                        <div class="app-body">
+                            <div class="auth-m" style="max-width:none">
+                                <h2>Вход</h2>
+                                <div class="field"><label>Email</label><input value="student@vyatsu.ru" readonly></div>
+                                <div class="field"><label>Пароль</label><input type="password" value="••••" readonly></div>
+                                <a class="btn btn-primary" href="#" style="width:100%;text-align:center;display:block">Войти</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== КАБИНЕТ ========== -->
+<section class="screen-section" id="dashboard">
+    <h2>3. Личный кабинет</h2>
+    <p>Панель быстрого доступа к основным сервисам.</p>
+    <div class="devices">
+        <div class="device-wrap">
+            <span class="device-label">ПК</span>
+            <div class="frame-desktop">
+                <div class="chrome"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+                    <span class="chrome-url">…/dashboard</span></div>
+                <div class="app">
+                    <nav class="app-nav">
+                        <span class="logo">ВятГУ</span>
+                        <div class="links">
+                            <a href="#">Главная</a>
+                            <a href="#" class="active">Кабинет</a>
+                            <a href="#">Расписание</a>
+                            <a href="#">Запись</a>
+                            <a href="#">Выход</a>
+                        </div>
+                    </nav>
+                    <div class="app-body">
+                        <p class="dash-title">Добро пожаловать, Иванов Иван Иванович!</p>
+                        <div class="cards-m">
+                            <div class="card-m"><div class="icon">📅</div><h3>Расписание</h3><p>Группа: ИС-21</p><a class="btn btn-secondary" href="#">Посмотреть →</a></div>
+                            <div class="card-m"><div class="icon">🎫</div><h3>Студбилет</h3><p>QR и фото</p><a class="btn btn-secondary" href="#">Открыть →</a></div>
+                            <div class="card-m"><div class="icon">📝</div><h3>Запись</h3><p>К преподавателю</p><a class="btn btn-secondary" href="#">Записаться →</a></div>
+                            <div class="card-m"><div class="icon">❓</div><h3>Помощь</h3><p>FAQ</p><a class="btn btn-secondary" href="#">Читать →</a></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="device-wrap">
+            <span class="device-label">Смартфон</span>
+            <div class="frame-mobile">
+                <div class="notch"></div>
+                <div class="screen">
+                    <div class="app">
+                        <nav class="app-nav"><span class="logo">ВятГУ</span><div class="burger"><span></span><span></span><span></span></div></nav>
+                        <div class="app-body">
+                            <p class="dash-title">Добро пожаловать, Иванов И. И.!</p>
+                            <div class="cards-m">
+                                <div class="card-m"><div class="icon">📅</div><h3>Расписание</h3><p>ИС-21</p><a class="btn btn-secondary" href="#">Открыть</a></div>
+                                <div class="card-m"><div class="icon">🎫</div><h3>Студбилет</h3><p>QR-код</p><a class="btn btn-secondary" href="#">Открыть</a></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== РАСПИСАНИЕ ========== -->
+<section class="screen-section" id="schedule">
+    <h2>4. Расписание занятий</h2>
+    <p>Фильтры: неделя / сегодня / завтра.</p>
+    <div class="devices">
+        <div class="device-wrap">
+            <span class="device-label">ПК</span>
+            <div class="frame-desktop">
+                <div class="chrome"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+                    <span class="chrome-url">…/schedule</span></div>
+                <div class="app">
+                    <nav class="app-nav">
+                        <span class="logo">ВятГУ</span>
+                        <div class="links"><a href="#">Кабинет</a><a href="#" class="active">Расписание</a><a href="#">Выход</a></div>
+                    </nav>
+                    <div class="app-body">
+                        <div class="schedule-head">
+                            <div><h2>Расписание</h2><p style="font-size:0.72rem">Группа: <strong>ИС-21</strong></p></div>
+                            <div class="filters">
+                                <span class="on">Вся неделя</span><span>Сегодня</span><span>Завтра</span>
+                            </div>
+                        </div>
+                        <div class="day-card">
+                            <div class="day-title">Понедельник</div>
+                            <div class="lesson">
+                                <strong>1. Математика <span class="tag">лек</span></strong>
+                                08:30–10:00 · ауд. 305-12 · Иванова А.С.
+                            </div>
+                            <div class="lesson">
+                                <strong>2. Программирование <span class="tag">лаб</span></strong>
+                                10:15–11:45 · ауд. 510-08 · Петров В.К.
+                            </div>
+                        </div>
+                        <div class="day-card">
+                            <div class="day-title">Вторник</div>
+                            <div class="lesson">
+                                <strong>1. Базы данных <span class="tag">практ</span></strong>
+                                08:30–10:00 · ауд. 402-03 · Сидорова М.П.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="device-wrap">
+            <span class="device-label">Смартфон</span>
+            <div class="frame-mobile">
+                <div class="notch"></div>
+                <div class="screen">
+                    <div class="app">
+                        <nav class="app-nav"><span class="logo">ВятГУ</span><div class="burger"><span></span><span></span><span></span></div></nav>
+                        <div class="app-body">
+                            <div class="schedule-head">
+                                <h2>Расписание</h2>
+                                <div class="filters"><span class="on">Сегодня</span><span>Неделя</span></div>
+                            </div>
+                            <div class="day-card">
+                                <div class="day-title">Понедельник</div>
+                                <div class="lesson">
+                                    <strong>Математика</strong>
+                                    08:30 · 305-12
+                                </div>
+                                <div class="lesson">
+                                    <strong>Программирование</strong>
+                                    10:15 · 510-08
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== СТУДБИЛЕТ ========== -->
+<section class="screen-section" id="card">
+    <h2>5. Цифровой студенческий билет</h2>
+    <p>Данные студента, маскированный номер, QR-код и фото.</p>
+    <div class="devices">
+        <div class="device-wrap">
+            <span class="device-label">ПК</span>
+            <div class="frame-desktop">
+                <div class="chrome"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+                    <span class="chrome-url">…/student_card</span></div>
+                <div class="app">
+                    <nav class="app-nav">
+                        <span class="logo">ВятГУ</span>
+                        <div class="links"><a href="#" class="active">Студбилет</a><a href="#">Кабинет</a></div>
+                    </nav>
+                    <div class="app-body">
+                        <h2 style="font-size:1rem;margin-bottom:0.5rem">Цифровой студенческий билет</h2>
+                        <div class="student-card-m">
+                            <div class="grid2">
+                                <div>
+                                    <p><strong>ФИО:</strong> Иванов Иван Иванович</p>
+                                    <p><strong>Группа:</strong> ИС-21</p>
+                                    <p><strong>Курс:</strong> 2</p>
+                                    <p><strong>Номер:</strong> ****7842</p>
+                                </div>
+                                <div style="text-align:center">
+                                    <div class="qr-box"></div>
+                                    <p style="font-size:0.65rem;color:var(--muted)">QR для проверки</p>
+                                </div>
+                            </div>
+                            <div style="margin-top:0.65rem;height:80px;background:linear-gradient(135deg,#cbd5e1,#94a3b8);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:#fff">Фото лица</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="device-wrap">
+            <span class="device-label">Смартфон</span>
+            <div class="frame-mobile">
+                <div class="notch"></div>
+                <div class="screen">
+                    <div class="app">
+                        <nav class="app-nav"><span class="logo">ВятГУ</span><div class="burger"><span></span><span></span><span></span></div></nav>
+                        <div class="app-body">
+                            <h2 style="font-size:0.9rem">Студбилет</h2>
+                            <div class="student-card-m">
+                                <p style="font-size:0.72rem"><strong>Иванов И. И.</strong><br>ИС-21 · ****7842</p>
+                                <div class="qr-box" style="margin:0.5rem auto"></div>
+                                <div style="height:100px;background:#94a3b8;border-radius:8px;margin-top:0.5rem"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== КАРТА ========== -->
+<section class="screen-section" id="map">
+    <h2>6. Карта корпусов и общежитий</h2>
+    <p>Яндекс.Карты, фильтры, геолокация и маршруты.</p>
+    <div class="devices">
+        <div class="device-wrap">
+            <span class="device-label">ПК</span>
+            <div class="frame-desktop">
+                <div class="chrome"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+                    <span class="chrome-url">…/map</span></div>
+                <div class="app">
+                    <nav class="app-nav">
+                        <span class="logo">ВятГУ</span>
+                        <div class="links"><a href="#" class="active">Карта</a><a href="#">Новости</a></div>
+                    </nav>
+                    <div class="app-body">
+                        <h2 style="font-size:0.95rem;margin-bottom:0.35rem">Карта и контакты ВятГУ</h2>
+                        <div class="map-m">
+                            <div>
+                                <div style="margin-bottom:0.35rem">
+                                    <span class="filters"><span class="on">Все</span><span>Общежития</span><span>Корпуса</span></span>
+                                    <span class="btn btn-secondary" style="font-size:0.65rem;margin-left:0.3rem">📍 Моё местоположение</span>
+                                </div>
+                                <div class="map-canvas">
+                                    <span class="map-pin"></span><span class="map-pin"></span><span class="map-pin"></span>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="loc-item"><strong>Корпус №5 (Колледж)</strong><br>ул. Владимирская, 55<br><span style="color:var(--muted)">1.2 км</span></div>
+                                <div class="loc-item"><strong>Общежитие №1</strong><br>Октябрьский пр-кт, 113</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="device-wrap">
+            <span class="device-label">Смартфон</span>
+            <div class="frame-mobile">
+                <div class="notch"></div>
+                <div class="screen">
+                    <div class="app">
+                        <nav class="app-nav"><span class="logo">ВятГУ</span><div class="burger"><span></span><span></span><span></span></div></nav>
+                        <div class="app-body">
+                            <h2 style="font-size:0.85rem">Карта ВятГУ</h2>
+                            <div class="map-canvas" style="min-height:120px;margin-bottom:0.5rem">
+                                <span class="map-pin"></span><span class="map-pin"></span>
+                            </div>
+                            <div class="loc-item"><strong>Корпус №5</strong><br>Владимирская, 55</div>
+                            <div class="loc-item"><strong>Общежитие №1</strong><br>Октябрьский пр-кт, 113</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== НОВОСТИ ========== -->
+<section class="screen-section" id="news">
+    <h2>7. Новости колледжа</h2>
+    <p>Лента из группы ВКонтакте.</p>
+    <div class="devices">
+        <div class="device-wrap">
+            <span class="device-label">ПК</span>
+            <div class="frame-desktop">
+                <div class="chrome"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+                    <span class="chrome-url">…/news</span></div>
+                <div class="app">
+                    <nav class="app-nav">
+                        <span class="logo">ВятГУ</span>
+                        <div class="links"><a href="#" class="active">Новости</a><a href="#">Карта</a></div>
+                    </nav>
+                    <div class="app-body news-m">
+                        <h2 style="font-size:1rem;margin-bottom:0.5rem">Новости колледжа</h2>
+                        <div class="news-item">
+                            <div class="news-thumb"></div>
+                            <div>
+                                <h3>День открытых дверей</h3>
+                                <p class="date">15 мая 2026</p>
+                                <p>Приглашаем абитуриентов 20 апреля в корпус №5…</p>
+                            </div>
+                        </div>
+                        <div class="news-item">
+                            <div class="news-thumb" style="background:linear-gradient(135deg,#fca5a5,#f472b6)"></div>
+                            <div>
+                                <h3>Студенческая конференция</h3>
+                                <p class="date">10 мая 2026</p>
+                                <p>Итоги ежегодной конференции колледжа…</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="device-wrap">
+            <span class="device-label">Смартфон</span>
+            <div class="frame-mobile">
+                <div class="notch"></div>
+                <div class="screen">
+                    <div class="app">
+                        <nav class="app-nav"><span class="logo">ВятГУ</span><div class="burger"><span></span><span></span><span></span></div></nav>
+                        <div class="app-body news-m">
+                            <h2 style="font-size:0.9rem">Новости</h2>
+                            <div class="news-item">
+                                <div class="news-thumb"></div>
+                                <div>
+                                    <h3>День открытых дверей</h3>
+                                    <p class="date">15.05.2026</p>
+                                </div>
+                            </div>
+                            <div class="news-item">
+                                <div class="news-thumb" style="background:linear-gradient(135deg,#fca5a5,#f472b6)"></div>
+                                <div>
+                                    <h3>Конференция</h3>
+                                    <p class="date">10.05.2026</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+</body>
+</html>
