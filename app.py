@@ -1031,13 +1031,23 @@ def api_guard_verify():
         department = None
         position_title = None
         group_name = None
+        student_id = None
+        course_number = None
+        study_form = None
+        issue_date = None
+        card_number_masked = None
         if subject == 'student':
             prof = get_student_profile(conn, row['user_id'])
-            if prof and prof.get('face_photo_path'):
-                photo_url = url_for(
-                    'student_card_face_photo', user_id=row['user_id'], _external=True,
-                )
-            group_name = prof.get('group_name') if prof else None
+            if prof:
+                group_name = prof.get('group_name')
+                student_id = prof.get('student_id')
+                course_number = prof.get('course_number')
+                study_form = prof.get('study_form')
+                issue_date = prof.get('issue_date')
+                if prof.get('card_number_last4'):
+                    card_number_masked = f'****{prof["card_number_last4"]}'
+                if prof.get('face_photo_path'):
+                    photo_url = url_for('student_card_face_photo', user_id=row['user_id'])
         else:
             prof = get_teacher_profile(conn, row['user_id'])
             if prof:
@@ -1055,6 +1065,11 @@ def api_guard_verify():
         'department': department,
         'position_title': position_title,
         'group': group_name,
+        'student_id': student_id,
+        'course_number': course_number,
+        'study_form': study_form,
+        'issue_date': str(issue_date) if issue_date else None,
+        'card_number_masked': card_number_masked,
         'valid_until': valid_until,
     })
 

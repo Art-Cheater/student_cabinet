@@ -1,0 +1,3 @@
+/* Minimal styles for html5-qrcode (full CDN stylesheet optional) */
+#qr-reader video { width: 100%; }
+#qr-reader__dashboard { display: none !important; }

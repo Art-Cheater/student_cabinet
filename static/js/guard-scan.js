@@ -1,16 +1,44 @@
 (function () {
-    var resultEl = document.getElementById('guardResult');
     var statusEl = document.getElementById('cameraStatus');
     var startBtn = document.getElementById('startCameraBtn');
     var stopBtn = document.getElementById('stopCameraBtn');
-    var scanAgainBtn = document.getElementById('scanAgainBtn');
-    var readerEl = document.getElementById('qr-reader');
+    var modal = document.getElementById('guard-pass-modal');
+    var modalBody = document.getElementById('guard-pass-modal-body');
+    var modalClose = document.getElementById('guard-pass-modal-close');
     var scanner = null;
     var scanningLock = false;
     var cameraOn = false;
 
     function setStatus(text) {
         if (statusEl) statusEl.textContent = text;
+    }
+
+    function escapeHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s == null ? '' : String(s);
+        return d.innerHTML;
+    }
+
+    function formatValidUntil(iso) {
+        if (!iso) return '—';
+        try {
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return iso;
+            return d.toLocaleString('ru-RU', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+            });
+        } catch (e) {
+            return iso;
+        }
+    }
+
+    function getHtml5QrcodeClass() {
+        if (typeof Html5Qrcode !== 'undefined') return Html5Qrcode;
+        if (window.__Html5QrcodeLibrary__ && window.__Html5QrcodeLibrary__.Html5Qrcode) {
+            return window.__Html5QrcodeLibrary__.Html5Qrcode;
+        }
+        return null;
     }
 
     function parseToken(text) {
@@ -21,7 +49,7 @@
             var parts = u.pathname.split('/').filter(Boolean);
             var gi = parts.indexOf('gate');
             if (gi >= 0 && parts[gi + 1]) return parts[gi + 1];
-        } catch (e) { /* plain uuid or path */ }
+        } catch (e) { /* plain uuid */ }
         if (t.indexOf('/gate/') !== -1) {
             var seg = t.split('/gate/')[1];
             return (seg || '').split(/[?#]/)[0];
@@ -29,42 +57,86 @@
         return t;
     }
 
-    function escapeHtml(s) {
-        var d = document.createElement('div');
-        d.textContent = s || '';
-        return d.innerHTML;
+    function openModal() {
+        if (!modal) return;
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
     }
 
-    function showResult(data, isError) {
-        if (!resultEl) return;
-        resultEl.hidden = false;
-        resultEl.className = 'guard-result ' + (isError ? 'guard-result--error' : 'guard-result--ok');
-        if (scanAgainBtn) scanAgainBtn.hidden = false;
+    function closeModal() {
+        if (!modal) return;
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    function row(label, value) {
+        if (value == null || value === '') return '';
+        return '<p><strong>' + escapeHtml(label) + ':</strong> ' + escapeHtml(value) + '</p>';
+    }
+
+    function showPassModal(data, isError) {
+        if (!modalBody) return;
+        openModal();
         if (isError) {
-            resultEl.innerHTML = '<p><strong>Отказ</strong></p><p>' + escapeHtml(data.error || 'Ошибка') + '</p>';
+            modalBody.innerHTML =
+                '<h3 class="guard-modal-title guard-modal-title--error">Отказ</h3>' +
+                '<p class="guard-modal-error">' + escapeHtml(data.error || 'Ошибка проверки') + '</p>' +
+                '<button type="button" class="btn btn-primary btn-block" id="guard-modal-ok">Закрыть</button>';
             if (navigator.vibrate) navigator.vibrate(200);
+            bindModalOk();
             return;
         }
-        var html = '<p><strong>Допуск разрешён</strong></p>';
-        html += '<p class="guard-result-fio">' + escapeHtml(data.fio || '') + '</p>';
-        if (data.subject_type === 'student' && data.group) {
-            html += '<p>Группа: ' + escapeHtml(data.group) + '</p>';
-        }
-        if (data.position_title) html += '<p>Должность: ' + escapeHtml(data.position_title) + '</p>';
-        if (data.department) html += '<p>Подразделение: ' + escapeHtml(data.department) + '</p>';
-        if (data.pass_number) html += '<p>№ удостоверения: ' + escapeHtml(data.pass_number) + '</p>';
+
+        var isStudent = data.subject_type === 'student';
+        var title = isStudent ? 'Студенческий билет' : 'Пропуск преподавателя';
+        var html = '<h3 class="guard-modal-title guard-modal-title--ok">' + escapeHtml(title) + '</h3>';
+        html += '<p class="guard-modal-badge">Допуск разрешён</p>';
+
         if (data.photo_url) {
-            html += '<img src="' + escapeHtml(data.photo_url) + '" alt="Фото" class="guard-result-photo">';
+            html += '<div class="guard-modal-photo-wrap">' +
+                '<img src="' + escapeHtml(data.photo_url) + '" alt="Фото" class="guard-modal-photo">' +
+                '</div>';
         }
-        html += '<p class="hint">Действует до: ' + escapeHtml(data.valid_until || '—') + '</p>';
-        resultEl.innerHTML = html;
+
+        html += '<div class="guard-modal-card student-cabinet-card">';
+        html += '<p class="guard-modal-fio">' + escapeHtml(data.fio || '') + '</p>';
+        if (isStudent) {
+            html += row('Группа', data.group);
+            html += row('ID студента', data.student_id);
+            html += row('Курс', data.course_number);
+            html += row('Форма обучения', data.study_form);
+            html += row('Дата выдачи', data.issue_date);
+            html += row('Номер студбилета', data.card_number_masked);
+        } else {
+            html += row('Должность', data.position_title);
+            html += row('Подразделение', data.department);
+            html += row('№ удостоверения', data.pass_number);
+        }
+        html += '<p class="hint guard-modal-valid">Действует до: ' + escapeHtml(formatValidUntil(data.valid_until)) + '</p>';
+        html += '</div>';
+        html += '<button type="button" class="btn btn-accent btn-block" id="guard-modal-ok">Следующий</button>';
+        modalBody.innerHTML = html;
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        bindModalOk();
+    }
+
+    function bindModalOk() {
+        var ok = document.getElementById('guard-modal-ok');
+        if (ok) {
+            ok.onclick = function () {
+                closeModal();
+                scanningLock = false;
+                setStatus(cameraOn ? 'Наведите камеру на QR-код' : 'Нажмите «Включить камеру»');
+            };
+        }
     }
 
     async function verify(raw) {
         var token = parseToken(raw);
         if (!token) {
-            showResult({ error: 'Не удалось прочитать код' }, true);
+            showPassModal({ error: 'Не удалось прочитать код' }, true);
             return;
         }
         setStatus('Проверка…');
@@ -77,14 +149,15 @@
             });
             var data = await r.json();
             if (data.ok) {
-                showResult(data, false);
+                stopCamera();
+                showPassModal(data, false);
                 setStatus('Пропуск подтверждён');
             } else {
-                showResult(data, true);
+                showPassModal(data, true);
                 setStatus('Пропуск не принят');
             }
         } catch (e) {
-            showResult({ error: 'Нет связи с сервером' }, true);
+            showPassModal({ error: 'Нет связи с сервером' }, true);
             setStatus('Ошибка сети');
         }
     }
@@ -92,9 +165,7 @@
     function onScanSuccess(decodedText) {
         if (scanningLock || !decodedText) return;
         scanningLock = true;
-        verify(decodedText).finally(function () {
-            setTimeout(function () { scanningLock = false; }, 3000);
-        });
+        verify(decodedText);
     }
 
     function qrboxSize(viewfinderWidth, viewfinderHeight) {
@@ -105,20 +176,21 @@
 
     function stopCamera() {
         if (!scanner || !cameraOn) return;
-        var p = scanner.stop().then(function () {
+        scanner.stop().then(function () {
             if (scanner.clear) return scanner.clear();
         }).catch(function () {});
         cameraOn = false;
         if (startBtn) startBtn.hidden = false;
         if (stopBtn) stopBtn.hidden = true;
-        setStatus('Камера остановлена');
-        return p;
     }
 
     function startCamera() {
-        if (typeof Html5Qrcode === 'undefined') {
-            setStatus('Библиотека сканера не загрузилась');
-            showResult({ error: 'Обновите страницу' }, true);
+        var Html5Qrcode = getHtml5QrcodeClass();
+        if (!Html5Qrcode) {
+            setStatus('Сканер не загрузился');
+            showPassModal({
+                error: 'Не загрузилась библиотека камеры. Обновите страницу или введите ссылку вручную.',
+            }, true);
             return;
         }
         if (!scanner) {
@@ -129,12 +201,7 @@
         setStatus('Запрос доступа к камере…');
         if (startBtn) startBtn.disabled = true;
 
-        var config = {
-            fps: 12,
-            qrbox: qrboxSize,
-            aspectRatio: 1.0,
-            disableFlip: false,
-        };
+        var config = { fps: 12, qrbox: qrboxSize, aspectRatio: 1.0 };
 
         function onCameraReady(label) {
             cameraOn = true;
@@ -144,15 +211,14 @@
             }
             if (stopBtn) stopBtn.hidden = false;
             setStatus(label || 'Наведите камеру на QR-код');
-            if (resultEl) resultEl.hidden = true;
-            if (scanAgainBtn) scanAgainBtn.hidden = true;
+            closeModal();
         }
 
         scanner.start(
             { facingMode: 'environment' },
             config,
             onScanSuccess,
-            function () { /* кадры без QR — норма */ }
+            function () {}
         ).then(function () {
             onCameraReady('Наведите камеру на QR-код');
         }).catch(function () {
@@ -162,31 +228,30 @@
                 onScanSuccess,
                 function () {}
             ).then(function () {
-                onCameraReady('Фронтальная камера — держите телефон удобнее');
+                onCameraReady('Фронтальная камера');
             });
-        }).catch(function (err) {
+        }).catch(function () {
             if (startBtn) {
                 startBtn.hidden = false;
                 startBtn.disabled = false;
             }
-            var msg = (err && err.message) ? err.message : String(err);
             setStatus('Камера недоступна');
-            showResult({
-                error: 'Разрешите камеру в браузере. На телефоне сайт должен открываться по HTTPS (не http).',
+            showPassModal({
+                error: 'Разрешите камеру в браузере. На iPhone надёжнее открыть сайт по HTTPS.',
             }, true);
         });
     }
 
     if (startBtn) startBtn.addEventListener('click', startCamera);
-    if (stopBtn) stopBtn.addEventListener('click', stopCamera);
+    if (stopBtn) stopBtn.addEventListener('click', function () {
+        stopCamera();
+        setStatus('Камера остановлена');
+    });
 
-    if (scanAgainBtn) {
-        scanAgainBtn.addEventListener('click', function () {
-            if (resultEl) resultEl.hidden = true;
-            scanAgainBtn.hidden = true;
-            scanningLock = false;
-            if (!cameraOn) startCamera();
-            else setStatus('Наведите камеру на QR-код');
+    if (modalClose) modalClose.addEventListener('click', closeModal);
+    if (modal) {
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) closeModal();
         });
     }
 
@@ -198,7 +263,5 @@
         });
     }
 
-    window.addEventListener('pagehide', function () {
-        stopCamera();
-    });
+    window.addEventListener('pagehide', stopCamera);
 })();

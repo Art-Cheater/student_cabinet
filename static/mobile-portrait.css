@@ -98,6 +98,67 @@ body.guard-scan-page .container {
     display: none !important;
 }
 
+.guard-pass-modal-box {
+    max-width: 420px;
+    max-height: 92vh;
+    overflow-y: auto;
+}
+
+.guard-modal-title {
+    margin: 0 0 0.5rem;
+    padding-left: 12px;
+    border-left: 4px solid var(--campus-cta, #0039A6);
+}
+
+.guard-modal-title--ok {
+    color: #1a7f37;
+    border-left-color: #1a7f37;
+}
+
+.guard-modal-title--error {
+    color: #b42318;
+    border-left-color: #b42318;
+}
+
+.guard-modal-badge {
+    font-weight: 700;
+    color: #1a7f37;
+    margin: 0 0 1rem;
+}
+
+.guard-modal-fio {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 0 0 0.75rem;
+}
+
+.guard-modal-photo-wrap {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.guard-modal-photo {
+    width: 100%;
+    max-width: 280px;
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.guard-modal-card {
+    margin-bottom: 1rem;
+    padding: 1rem;
+}
+
+.guard-modal-valid {
+    margin-top: 0.75rem;
+}
+
+.guard-modal-error {
+    margin: 1rem 0;
+    color: #b42318;
+}
+
 .guard-result {
     margin-top: 1.25rem;
     padding: 1rem;
