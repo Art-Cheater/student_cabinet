@@ -12,16 +12,40 @@
 <div class="teacher-profile-card">
     {% if profile %}
     <h2>Профиль</h2>
-    <p><strong>ФИО:</strong> {{ profile.last_name }} {{ profile.first_name }} {{ profile.middle_name or '' }}</p>
+    <p><strong>ФИО:</strong> {{ profile|fio }}</p>
+    {% if profile.pass_number %}<p><strong>№ удостоверения:</strong> {{ profile.pass_number }}</p>{% endif %}
     {% if profile.position_title %}<p><strong>Должность:</strong> {{ profile.position_title }}</p>{% endif %}
+    {% if profile.department %}<p><strong>Подразделение:</strong> {{ profile.department }}</p>{% endif %}
     <p><strong>Кабинет:</strong> {{ profile.office_room or '—' }}</p>
     <p><strong>Email:</strong> {{ profile.email }}</p>
     {% else %}
     <p class="hint">Профиль не найден.</p>
+    {% endif %}
+    {% if qr_url %}
+    <div class="student-cabinet-qr" style="margin:1.5rem 0;">
+        <h3>QR пропуска</h3>
+        <img id="teacherQrImg" src="{{ qr_url }}" alt="QR пропуска" width="260" height="260">
+        <p class="hint">Код обновляется каждые несколько минут</p>
+    </div>
     {% endif %}
     <div class="teacher-profile-actions">
         <a href="{{ url_for('teacher_slots') }}" class="btn btn-accent">Временные слоты и записи</a>
         <a href="{{ url_for('teacher_schedule') }}" class="btn btn-outline">Создать новый слот</a>
     </div>
 </div>
+{% if qr_url %}
+<script>
+(function () {
+    function refreshQr() {
+        fetch('/api/my-qr-token').then(function (r) { return r.json(); }).then(function (d) {
+            if (d.ok && d.qr_url) {
+                var img = document.getElementById('teacherQrImg');
+                if (img) img.src = d.qr_url;
+            }
+        }).catch(function () {});
+    }
+    setInterval(refreshQr, 4 * 60 * 1000);
+})();
+</script>
+{% endif %}
 {% endblock %}

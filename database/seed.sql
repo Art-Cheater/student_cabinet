@@ -1,7 +1,8 @@
 INSERT INTO roles (code, title) VALUES
     ('admin', 'Администратор'),
     ('student', 'Студент'),
-    ('teacher', 'Преподаватель')
+    ('teacher', 'Преподаватель'),
+    ('guard', 'Охранник')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO content.faq (question, answer, source_url)

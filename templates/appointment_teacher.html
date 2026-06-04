@@ -1,69 +1,84 @@
-{% extends "base.html" %}
-{% block body_class %}layout-wide{% endblock %}
-{% block content %}
-<div class="appointment-page">
-    <nav class="page-breadcrumb" aria-label="Навигация">
-        <a href="{{ url_for('appointment_list') }}" class="btn btn-ghost btn-sm">&larr; Все преподаватели</a>
-        <a href="{{ url_for('schedule_page') }}" class="btn btn-ghost btn-sm">Моё расписание</a>
-    </nav>
-
-    <div class="appointment-teacher-header reveal-on-scroll">
-        <h1 class="heading-brand">{{ teacher.last_name }} {{ teacher.first_name }} {{ teacher.middle_name or '' }}</h1>
-        {% if teacher.position_title %}<p>{{ teacher.position_title }}</p>{% endif %}
-        {% if teacher.office_room %}<p class="hint">Кабинет: {{ teacher.office_room }}</p>{% endif %}
-    </div>
-
-    {% if not slots_by_date %}
-    <div class="admin-note">
-        <p>Свободных окон для записи пока нет. Выберите другого преподавателя.</p>
-    </div>
-    {% else %}
-    <h2 class="section-title">Дни с доступной записью</h2>
-    <div class="date-picker">
-        {% for day, day_slots in slots_by_date.items() %}
-        <a href="{{ url_for('appointment_teacher', teacher_id=teacher_id, date=day) }}"
-           class="date-pill {% if day == selected_date %}active{% endif %}">
-            <span class="date-pill-day">{{ day }}</span>
-            <span class="date-pill-meta">{{ day_slots|length }} окн.</span>
-        </a>
-        {% endfor %}
-    </div>
-
-    {% if selected_date %}
-    <h2 class="section-title">Окна на {{ selected_date }}</h2>
-    <div class="appointment-slot-list">
-        {% for s in day_slots %}
-        <div class="appointment-slot-card">
-            <div class="appointment-slot-info">
-                <strong class="appointment-slot-time">
-                    {{ (s.time_start|string)[:5] }} – {{ (s.time_end|string)[:5] }}
-                </strong>
-                <p class="appointment-slot-topic">{{ s.topic }}</p>
-                {% if s.room_display %}<p class="hint">Кабинет: {{ s.room_display }}</p>{% endif %}
-                <p class="hint">Свободно: {{ s.max_students - s.bookings_count }} из {{ s.max_students }}</p>
-                {% if (slot_warnings or {}).get(s.id) %}
-                <p class="slot-overlap-hint">{{ slot_warnings[s.id] }}</p>
-                {% endif %}
-            </div>
-            <form method="POST" class="book-slot-form"
-                  {% if (slot_warnings or {}).get(s.id) %}
-                  data-overlap-msg="{{ (slot_warnings or {})[s.id] }}"
-                  onsubmit="return confirmBookingOverlap(this);"
-                  {% endif %}>
-                <input type="hidden" name="slot_id" value="{{ s.id }}">
-                <button type="submit" class="btn btn-accent">Записаться</button>
-            </form>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-    {% endif %}
-</div>
-<script>
-function confirmBookingOverlap(form) {
-    var msg = form.getAttribute('data-overlap-msg');
-    if (!msg) return true;
-    return confirm(msg + '\n\nВсё равно записаться?');
-}
-</script>
-{% endblock %}
+{% extends "base.html" %}
+{% block body_class %}layout-wide{% endblock %}
+{% block content %}
+<div class="appointment-page">
+    <nav class="page-breadcrumb" aria-label="Навигация">
+        <a href="{{ url_for('appointment_list') }}" class="btn btn-ghost btn-sm">&larr; Все преподаватели</a>
+        <a href="{{ url_for('appointment_mine') }}" class="btn btn-ghost btn-sm">Мои записи</a>
+        <a href="{{ url_for('schedule_page') }}" class="btn btn-ghost btn-sm">Моё расписание</a>
+    </nav>
+
+    <div class="appointment-teacher-header reveal-on-scroll">
+        <h1 class="heading-brand">{{ teacher|fio }}</h1>
+        {% if teacher.position_title %}<p>{{ teacher.position_title }}</p>{% endif %}
+        {% if teacher.office_room %}<p class="hint">Кабинет: {{ teacher.office_room }}</p>{% endif %}
+    </div>
+
+    {% if not slots_by_date %}
+    <div class="admin-note">
+        <p>Свободных окон для записи пока нет. Выберите другого преподавателя.</p>
+    </div>
+    {% else %}
+    <h2 class="section-title">Дни с доступной записью</h2>
+    <div class="date-picker">
+        {% for day, day_slots in slots_by_date.items() %}
+        <a href="{{ url_for('appointment_teacher', teacher_id=teacher_id, date=day) }}"
+           class="date-pill {% if day == selected_date %}active{% endif %}">
+            <span class="date-pill-day">{{ day }}</span>
+            <span class="date-pill-meta">{{ day_slots|length }} окн.</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    {% if selected_date %}
+    <h2 class="section-title">Окна на {{ selected_date }}</h2>
+    <div class="appointment-slot-list">
+        {% for s in day_slots %}
+        <div class="appointment-slot-card">
+            <div class="appointment-slot-info">
+                <strong class="appointment-slot-time">
+                    {{ (s.time_start|string)[:5] }} – {{ (s.time_end|string)[:5] }}
+                </strong>
+                <p class="appointment-slot-topic">{{ s.topic }}</p>
+                {% if s.room_display %}<p class="hint">Кабинет: {{ s.room_display }}</p>{% endif %}
+                <p class="hint">Свободно: {{ s.max_students - s.bookings_count }} из {{ s.max_students }}</p>
+                {% if (slot_warnings or {}).get(s.id) %}
+                <p class="slot-overlap-hint">{{ slot_warnings[s.id] }}</p>
+                {% endif %}
+            </div>
+            <form method="POST" class="book-slot-form"
+                  data-time="{{ (s.time_start|string)[:5] }} – {{ (s.time_end|string)[:5] }}"
+                  data-topic="{{ s.topic }}"
+                  data-teacher="{{ teacher|fio }}"
+                  {% if (slot_warnings or {}).get(s.id) %}
+                  data-overlap-msg="{{ (slot_warnings or {})[s.id] }}"
+                  {% endif %}
+                  onsubmit="return confirmBooking(this);">
+                <input type="hidden" name="slot_id" value="{{ s.id }}">
+                <button type="submit" class="btn btn-accent book-slot-btn">Записаться</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+<script>
+function confirmBooking(form) {
+    var time = form.getAttribute('data-time') || '';
+    var topic = form.getAttribute('data-topic') || '';
+    var teacher = form.getAttribute('data-teacher') || '';
+    var msg = 'Записаться к ' + teacher + '?\n' + time + (topic ? ' — ' + topic : '');
+    if (!confirm(msg)) return false;
+    var overlap = form.getAttribute('data-overlap-msg');
+    if (overlap && !confirm(overlap + '\n\nВсё равно записаться?')) return false;
+    var btn = form.querySelector('.book-slot-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('is-loading');
+        btn.textContent = 'Запись…';
+    }
+    return true;
+}
+</script>
+{% endblock %}

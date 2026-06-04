@@ -60,6 +60,8 @@ CREATE TABLE IF NOT EXISTS schedule_teachers (
 CREATE TABLE IF NOT EXISTS teacher_profiles (
     user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     position_title VARCHAR(255),
+    pass_number VARCHAR(64),
+    department VARCHAR(255),
     office_room VARCHAR(32),
     schedule_teacher_id INTEGER REFERENCES schedule_teachers(id)
 );
@@ -163,7 +165,7 @@ CREATE TABLE IF NOT EXISTS office_bookings (
     slot_id INTEGER NOT NULL REFERENCES office_slots(id) ON DELETE CASCADE,
     student_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     status VARCHAR(16) NOT NULL DEFAULT 'pending'
-        CHECK (status IN ('pending', 'confirmed', 'rejected')),
+        CHECK (status IN ('pending', 'confirmed', 'rejected', 'cancelled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (slot_id, student_user_id)
 );
@@ -216,6 +218,25 @@ CREATE TABLE IF NOT EXISTS content.vk_news_cache (
     post_url TEXT,
     image_url TEXT,
     fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS qr_access_tokens (
+    id SERIAL PRIMARY KEY,
+    token UUID NOT NULL UNIQUE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subject_type VARCHAR(16) NOT NULL CHECK (subject_type IN ('student', 'teacher')),
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    revoked_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_qr_tokens_token ON qr_access_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_qr_tokens_user ON qr_access_tokens(user_id);
+
+CREATE TABLE IF NOT EXISTS content.app_settings (
+    key VARCHAR(64) PRIMARY KEY,
+    value TEXT NOT NULL DEFAULT '',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS content.faq (

@@ -68,3 +68,17 @@ def normalize_building_number(value):
 
 def validate_office_room(value):
     return re.fullmatch(r'\d+-\d+', (value or '').strip()) is not None
+
+
+def format_fio(last_name=None, first_name=None, middle_name=None, row=None):
+    """Фамилия Имя Отчество."""
+    if row is not None:
+        last_name = row.get('last_name')
+        first_name = row.get('first_name')
+        middle_name = row.get('middle_name')
+    parts = [
+        (last_name or '').strip(),
+        (first_name or '').strip(),
+        (middle_name or '').strip(),
+    ]
+    return ' '.join(p for p in parts if p).strip() or 'Пользователь'

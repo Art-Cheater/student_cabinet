@@ -1,5 +1,133 @@
 /* Portrait mobile / PWA — load last */
 
+.toast-host {
+    position: fixed;
+    left: max(1rem, env(safe-area-inset-left, 0));
+    right: max(1rem, env(safe-area-inset-right, 0));
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0));
+    z-index: 9999;
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+    background: #1a2a4a;
+    color: #fff;
+    font-size: 0.95rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    transform: translateY(120%);
+    opacity: 0;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    pointer-events: none;
+    max-width: 28rem;
+    margin: 0 auto;
+}
+
+.toast-host--visible {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.toast-host--warning {
+    background: #5d4037;
+}
+
+.toast-host--error {
+    background: #b71c1c;
+}
+
+.book-slot-form .btn.is-loading {
+    opacity: 0.65;
+    pointer-events: none;
+}
+
+body.guard-scan-page .container {
+    padding-bottom: 2rem;
+}
+
+.guard-scan-page {
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.guard-scan-hint--small {
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+}
+
+.guard-qr-reader {
+    width: 100%;
+    min-height: min(55vw, 280px);
+    margin: 0 auto 0.75rem;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #0d1b33;
+}
+
+.guard-qr-reader video {
+    border-radius: 16px;
+    object-fit: cover;
+}
+
+.guard-camera-status {
+    text-align: center;
+    font-weight: 600;
+    margin: 0.5rem 0 0.75rem;
+    color: var(--vy-blue, #0039A6);
+}
+
+.guard-camera-btn {
+    min-height: 48px;
+    font-size: 1.05rem;
+    margin-bottom: 0.5rem;
+}
+
+.guard-manual-block {
+    margin-top: 1.25rem;
+    padding: 0.75rem 0;
+}
+
+.guard-manual-block summary {
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+#qr-reader__scan_region {
+    min-height: 240px;
+}
+
+#qr-reader__dashboard {
+    display: none !important;
+}
+
+.guard-result {
+    margin-top: 1.25rem;
+    padding: 1rem;
+    border-radius: 12px;
+}
+
+.guard-result--ok {
+    background: #e8f5e9;
+    border: 2px solid #28a745;
+}
+
+.guard-result--error {
+    background: #ffebee;
+    border: 2px solid #c62828;
+}
+
+.guard-result-fio {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+}
+
+.guard-result-photo {
+    max-width: 200px;
+    border-radius: 8px;
+    margin-top: 0.75rem;
+}
+
+/* Portrait mobile / PWA */
+
 html {
     -webkit-text-size-adjust: 100%;
 }

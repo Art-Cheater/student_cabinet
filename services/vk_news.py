@@ -15,6 +15,15 @@ VK_API_VERSION = '5.199'
 
 
 def get_vk_access_token():
+    try:
+        from db.connection import get_db
+        from db.queries.settings import get_setting
+        with get_db() as conn:
+            db_token = get_setting(conn, 'vk_access_token', '').strip()
+            if db_token:
+                return db_token
+    except Exception:
+        pass
     return os.getenv('VK_ACCESS_TOKEN', '').strip()
 
 

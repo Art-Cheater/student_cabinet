@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block body_class %}guard-scan-page{% endblock %}
+{% block content %}
+<div class="guard-scan-page">
+    <h1 class="heading-brand">Проверка пропуска</h1>
+    <p class="hint guard-scan-hint">Откройте камеру и наведите на QR-код с экрана студента или преподавателя.</p>
+    <p class="hint guard-scan-hint guard-scan-hint--small">Нужен HTTPS и разрешение на камеру в браузере.</p>
+
+    <div id="qr-reader" class="guard-qr-reader"></div>
+    <p id="cameraStatus" class="guard-camera-status">Нажмите «Включить камеру»</p>
+    <button type="button" class="btn btn-primary btn-block guard-camera-btn" id="startCameraBtn">
+        Включить камеру
+    </button>
+    <button type="button" class="btn btn-outline btn-block" id="stopCameraBtn" hidden>
+        Остановить камеру
+    </button>
+
+    <details class="guard-manual-block">
+        <summary>Нет камеры / ввести код вручную</summary>
+        <div class="form-group">
+            <label>Ссылка или UUID из QR</label>
+            <input type="text" id="manualToken" placeholder="https://.../gate/... или uuid" autocomplete="off">
+            <button type="button" class="btn btn-primary btn-block" id="manualVerifyBtn" style="margin-top:0.5rem;">Проверить</button>
+        </div>
+    </details>
+
+    <div id="guardResult" class="guard-result" hidden></div>
+    <button type="button" class="btn btn-accent btn-block" id="scanAgainBtn" hidden>Сканировать следующий</button>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.css">
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+<script src="{{ url_for('static', filename='js/guard-scan.js') }}"></script>
+{% endblock %}

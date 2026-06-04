@@ -11,14 +11,17 @@
             <a href="{{ url_for(calendar_base_url, view='month', month=cal.month, **extra_params) }}"
                class="{% if cal.view == 'month' %}active{% endif %}">Месяц</a>
         </div>
-        <div class="nav-arrows">
+        <div class="nav-arrows{% if cal.view == 'day' %} calendar-nav-arrows{% endif %}">
             {% if cal.view == 'month' %}
                 <a href="{{ url_for(calendar_base_url, view='month', month=cal.prev_month, **extra_params) }}">&larr;</a>
                 <a href="{{ url_for(calendar_base_url, view='month', month=cal.next_month, **extra_params) }}">&rarr;</a>
             {% elif cal.view == 'day' %}
-                <a href="{{ url_for(calendar_base_url, view='day', day=cal.prev_day, week=cal.week_start, **extra_params) }}">&larr;</a>
-                <a href="{{ url_for(calendar_base_url, view='day', day=cal.today, week=cal.week_start, **extra_params) }}">Сегодня</a>
-                <a href="{{ url_for(calendar_base_url, view='day', day=cal.next_day, week=cal.week_start, **extra_params) }}">&rarr;</a>
+                <a href="{{ url_for(calendar_base_url, view='day', day=cal.prev_day, week=cal.week_start, **extra_params) }}" class="calendar-nav-arrow" aria-label="Предыдущий день">&larr;</a>
+                <span class="calendar-nav-center">{{ cal.day_label }}</span>
+                <a href="{{ url_for(calendar_base_url, view='day', day=cal.next_day, week=cal.week_start, **extra_params) }}" class="calendar-nav-arrow" aria-label="Следующий день">&rarr;</a>
+                {% if cal.day != cal.today %}
+                <a href="{{ url_for(calendar_base_url, view='day', day=cal.today, week=cal.week_start, **extra_params) }}" class="calendar-today-link">Сегодня</a>
+                {% endif %}
             {% else %}
                 <a href="{{ url_for(calendar_base_url, view='week', week=cal.prev_week, **extra_params) }}">&larr; Неделя</a>
                 <a href="{{ url_for(calendar_base_url, view='week', week=cal.next_week, **extra_params) }}">Неделя &rarr;</a>

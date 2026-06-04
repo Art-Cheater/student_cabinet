@@ -11,7 +11,7 @@
         <div class="teacher-card-header">
             <span class="dash-card__icon" aria-hidden="true">👨‍🏫</span>
             <div>
-                <h3>{{ t.last_name }} {{ t.first_name }} {{ t.middle_name or '' }}</h3>
+                <h3>{{ t|fio }}</h3>
                 {% if t.position_title %}<p>{{ t.position_title }}</p>{% endif %}
                 {% if t.office_room %}<p class="hint">Кабинет: {{ t.office_room }}</p>{% endif %}
             </div>

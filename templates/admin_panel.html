@@ -56,7 +56,7 @@
             {% for s in students %}
             <tr>
                 <td>{{ s.email }}</td>
-                <td>{{ s.last_name }} {{ s.first_name }}</td>
+                <td>{{ s|fio }}</td>
                 <td>{{ s.group_name or '—' }}</td>
                 <td>
                     <details><summary>Изменить</summary>
@@ -117,7 +117,9 @@
             <div class="form-group"><label>Фамилия *</label><input type="text" name="last_name" required></div>
             <div class="form-group"><label>Имя *</label><input type="text" name="first_name" required></div>
             <div class="form-group"><label>Отчество</label><input type="text" name="middle_name"></div>
+            <div class="form-group"><label>Номер удостоверения</label><input type="text" name="pass_number"></div>
             <div class="form-group"><label>Должность</label><input type="text" name="position_title"></div>
+            <div class="form-group"><label>Подразделение</label><input type="text" name="department"></div>
             <div class="form-group"><label>Кабинет *</label>
                 <input type="text" name="office_room" data-room-mask placeholder="5-104" pattern="\d{1,2}-\d{1,4}" required></div>
             <div class="form-group"><label>ФИО из расписания Excel</label>
@@ -138,7 +140,7 @@
             {% for t in teachers %}
             <tr>
                 <td>{{ t.email }}</td>
-                <td>{{ t.last_name }} {{ t.first_name }} {{ t.middle_name or '' }}</td>
+                <td>{{ t|fio }}</td>
                 <td>{{ t.office_room or '—' }}</td>
                 <td>
                     {{ t.schedule_teacher_name or '—' }}
@@ -158,7 +160,9 @@
                         <div class="form-group"><label>Фамилия</label><input type="text" name="last_name" value="{{ t.last_name }}" required></div>
                         <div class="form-group"><label>Имя</label><input type="text" name="first_name" value="{{ t.first_name }}" required></div>
                         <div class="form-group"><label>Отчество</label><input type="text" name="middle_name" value="{{ t.middle_name or '' }}"></div>
+                        <div class="form-group"><label>№ удостоверения</label><input type="text" name="pass_number" value="{{ t.pass_number or '' }}"></div>
                         <div class="form-group"><label>Должность</label><input type="text" name="position_title" value="{{ t.position_title or '' }}"></div>
+                        <div class="form-group"><label>Подразделение</label><input type="text" name="department" value="{{ t.department or '' }}"></div>
                         <div class="form-group"><label>Кабинет</label>
                             <input type="text" name="office_room" data-room-mask value="{{ t.office_room }}" pattern="\d{1,2}-\d{1,4}" required></div>
                         <div class="form-group"><label>ФИО из Excel</label>
@@ -204,14 +208,31 @@
 
     <div class="admin-tab-panel {% if tab == 'help' %}active{% endif %}">
         <h3>VK-токен для новостей и расписания</h3>
+        {% if vk_token_masked %}<p class="hint">Сохранённый токен: <code>{{ vk_token_masked }}</code></p>{% endif %}
+        <form method="POST" style="margin:1rem 0; max-width:480px;">
+            <input type="hidden" name="action" value="save_vk_token">
+            <div class="form-group">
+                <label>VK Access Token</label>
+                <input type="password" name="vk_access_token" placeholder="vk1.a...." autocomplete="off">
+                <p class="hint">Пустое поле — удалить токен из БД. Можно также задать <code>VK_ACCESS_TOKEN</code> в .env.</p>
+            </div>
+            <button type="submit" class="btn btn-primary">Сохранить токен</button>
+        </form>
         <ol>
             <li>Управление сообществом → <strong>Работа с API</strong> → <strong>Создать ключ</strong></li>
             <li>Права: стена, документы (для Excel расписания)</li>
-            <li>Скопируйте ключ в файл <code>.env</code>: <code>VK_ACCESS_TOKEN=...</code></li>
-            <li>Перезапустите приложение</li>
         </ol>
         <p>Документация: <a href="https://dev.vk.com/api/access-token/community-token" target="_blank" rel="noopener">ключ доступа сообщества</a></p>
-        <p>Файл <code>vk_token.txt</code> больше не используется.</p>
+        <h3 style="margin-top:2rem;">Охранник</h3>
+        <form method="POST" style="margin:1rem 0; max-width:480px;">
+            <input type="hidden" name="action" value="create_guard">
+            <div class="form-group"><label>Email *</label><input type="email" name="email" required></div>
+            <div class="form-group"><label>Пароль *</label><input type="text" name="password" pattern="[A-Za-z0-9]+" required></div>
+            <div class="form-group"><label>Фамилия *</label><input type="text" name="last_name" required></div>
+            <div class="form-group"><label>Имя *</label><input type="text" name="first_name" required></div>
+            <div class="form-group"><label>Отчество</label><input type="text" name="middle_name"></div>
+            <button type="submit" class="btn btn-primary">Создать охранника</button>
+        </form>
         <p>Корпуса в БД:</p>
         <form method="POST" action="{{ url_for('admin_sync_campus') }}">
             <input type="hidden" name="action" value="sync_campus">

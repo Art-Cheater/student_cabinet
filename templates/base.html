@@ -39,10 +39,13 @@
                             <a href="{{ url_for('dashboard') }}" class="{% if ep == 'dashboard' %}nav-link-active{% endif %}">Кабинет</a>
                             <a href="{{ url_for('schedule_page') }}" class="{% if ep == 'schedule_page' %}nav-link-active{% endif %}">Расписание</a>
                             <a href="{{ url_for('appointment_list') }}" class="{% if ep in ('appointment_list', 'appointment_teacher') %}nav-link-active{% endif %}">Запись</a>
+                            <a href="{{ url_for('appointment_mine') }}" class="{% if ep == 'appointment_mine' %}nav-link-active{% endif %}">Мои записи</a>
                         {% elif session.role == 'teacher' %}
                             <a href="{{ url_for('teacher_dashboard') }}" class="{% if ep == 'teacher_dashboard' %}nav-link-active{% endif %}">Кабинет</a>
                             <a href="{{ url_for('teacher_slots') }}" class="{% if ep == 'teacher_slots' %}nav-link-active{% endif %}">Слоты</a>
                             <a href="{{ url_for('teacher_schedule') }}" class="{% if ep == 'teacher_schedule' %}nav-link-active{% endif %}">Расписание</a>
+                        {% elif session.role == 'guard' %}
+                            <a href="{{ url_for('guard_scan') }}" class="{% if ep == 'guard_scan' %}nav-link-active{% endif %}">Проверка QR</a>
                         {% elif session.role == 'admin' %}
                             <a href="{{ url_for('admin_panel', tab='students') }}" class="{% if ep == 'admin_panel' and request.args.get('tab', 'students') == 'students' %}nav-link-active{% endif %}">Студенты</a>
                             <a href="{{ url_for('admin_panel', tab='teachers') }}" class="{% if ep == 'admin_panel' and request.args.get('tab') == 'teachers' %}nav-link-active{% endif %}">Преподаватели</a>
@@ -77,7 +80,9 @@
             {% if messages %}
                 <div class="flash-messages">
                     {% for category, message in messages %}
-                    <div class="flash {% if category == 'warning' %}flash-warning{% endif %}">{{ message }}</div>
+                    <div class="flash {% if category == 'warning' %}flash-warning{% endif %}"
+                         data-flash-message="{{ message }}"
+                         data-flash-category="{{ category or '' }}">{{ message }}</div>
                     {% endfor %}
                 </div>
             {% endif %}
@@ -85,6 +90,8 @@
         {% block content %}{% endblock %}
     </div>
     <footer><p>© 2026 ВятГУ | Личный кабинет</p></footer>
+    <script>if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }</script>
+    <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
     <script>
         (function () {
             var toggle = document.getElementById('navToggle');

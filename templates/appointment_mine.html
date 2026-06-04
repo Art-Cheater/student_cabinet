@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Мои записи к преподавателям</h2>
+<h2 class="heading-brand">Мои записи к преподавателям</h2>
 <p><a href="{{ url_for('appointment_list') }}">&larr; Выбрать преподавателя</a></p>
-<div class="bookings-list">
-    <table>
+<div class="table-scroll">
+    <table class="bookings-list">
         <thead>
             <tr>
                 <th>Преподаватель</th>
@@ -12,20 +12,29 @@
                 <th>Тема</th>
                 <th>Кабинет</th>
                 <th>Статус</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
             {% for b in bookings %}
             <tr>
-                <td>{{ b.teacher_last_name }} {{ b.teacher_first_name }}</td>
+                <td>{{ b.teacher_last_name }} {{ b.teacher_first_name }} {{ b.teacher_middle_name or '' }}</td>
                 <td>{{ b.slot_date }}</td>
                 <td>{{ b.time_start }} – {{ b.time_end }}</td>
                 <td>{{ b.topic }}</td>
                 <td>{{ b.room_display or '—' }}</td>
                 <td>{{ b.status }}</td>
+                <td>
+                    {% if b.status in ('pending', 'confirmed') %}
+                    <form method="POST" action="{{ url_for('appointment_cancel', booking_id=b.booking_id) }}"
+                          onsubmit="return confirm('Отменить запись?');" style="display:inline;">
+                        <button type="submit" class="btn btn-danger btn-sm">Отменить</button>
+                    </form>
+                    {% else %}—{% endif %}
+                </td>
             </tr>
             {% else %}
-            <tr><td colspan="6">Вы ещё не записывались. <a href="{{ url_for('appointment_list') }}">Записаться</a></td></tr>
+            <tr><td colspan="7">Вы ещё не записывались. <a href="{{ url_for('appointment_list') }}">Записаться</a></td></tr>
             {% endfor %}
         </tbody>
     </table>

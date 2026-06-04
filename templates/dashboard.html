@@ -25,8 +25,8 @@
             <p><strong>Номер студбилета:</strong> {{ masked_number }}</p>
         </div>
         <div class="student-cabinet-qr">
-            <img src="{{ qr_url }}" alt="QR студенческого билета">
-            <p class="hint">QR для проверки</p>
+            <img id="studentQrImg" src="{{ qr_url }}" alt="QR студенческого билета" width="260" height="260">
+            <p class="hint">Покажите охраннику. Код обновляется автоматически.</p>
         </div>
     </div>
 
@@ -50,5 +50,20 @@
         </form>
     </div>
 </div>
+{% endif %}
+{% if card and qr_url %}
+<script>
+(function () {
+    function refreshQr() {
+        fetch('/api/my-qr-token').then(function (r) { return r.json(); }).then(function (d) {
+            if (d.ok && d.qr_url) {
+                var img = document.getElementById('studentQrImg');
+                if (img) img.src = d.qr_url;
+            }
+        }).catch(function () {});
+    }
+    setInterval(refreshQr, 4 * 60 * 1000);
+})();
+</script>
 {% endif %}
 {% endblock %}

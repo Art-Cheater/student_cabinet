@@ -23,6 +23,27 @@ docker compose exec app python parsers/vyatsu_campus.py
 
 Сайт: http://localhost:5000 (логин админа — `ADMIN_EMAIL` / `ADMIN_PASSWORD` из `docker-compose.yml`).
 
+### Обновление на сервере (после git push)
+
+База **не слетает**, если не использовать `docker compose down -v`.
+
+```bash
+cd student_cabinet
+git pull
+docker compose exec app python database/migrate_app_settings.py
+docker compose exec app python database/migrate_guard_qr.py
+docker compose up -d --build
+```
+
+Первый охранник: админка → вкладка «Справка VK» → блок «Охранник». VK-токен можно ввести там же (без правки `.env`).
+
+## Роли
+
+- **student** — кабинет, QR-пропуск, запись к преподавателю
+- **teacher** — слоты, расписание, QR-пропуск (№ удостоверения, должность, подразделение в админке)
+- **guard** — страница `/guard`, сканирование QR **камерой телефона** (кнопка «Включить камеру», нужен HTTPS)
+- **admin** — студенты, преподаватели, расписание, VK-токен
+
 ## Требования
 
 - Python 3.11+

@@ -618,6 +618,29 @@
     }
 }
 
+.calendar-nav-center {
+    font-weight: 700;
+    color: var(--vy-blue);
+    padding: 0 0.5rem;
+    text-align: center;
+    min-width: 10rem;
+}
+
+.calendar-nav-arrows {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem 0.75rem;
+}
+
+.calendar-today-link {
+    font-size: 0.9rem;
+    color: var(--vy-blue);
+    text-decoration: underline;
+    margin-left: 0.25rem;
+}
+
 @media (max-width: 480px) {
     .calendar-toolbar {
         flex-direction: column;

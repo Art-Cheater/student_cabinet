@@ -152,11 +152,14 @@ def booking_to_event(booking):
         sd = sd.isoformat()[:10]
     else:
         sd = str(sd)[:10]
-    teacher = ' '.join(filter(None, [
+    from utils import format_fio
+    teacher = format_fio(
         booking.get('teacher_last_name'),
         booking.get('teacher_first_name'),
         booking.get('teacher_middle_name'),
-    ])).strip()
+    )
+    if teacher == 'Пользователь':
+        teacher = ''
     topic = booking.get('topic') or 'Приём'
     bid = booking.get('booking_id', booking.get('id'))
     sid = booking.get('slot_id')

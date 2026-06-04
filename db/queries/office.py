@@ -143,6 +143,7 @@ def create_booking(conn, slot_id, student_user_id):
     existing = conn.execute('''
         SELECT id FROM office_bookings
         WHERE slot_id = %s AND student_user_id = %s
+          AND status IN ('pending', 'confirmed')
     ''', (slot_id, student_user_id)).fetchone()
     if existing:
         return False, 'Вы уже записаны'
@@ -213,6 +214,22 @@ def list_teacher_slots_summary(conn, teacher_user_id, date_from=None, date_to=No
         params.extend([date_from, date_to])
     sql += ' ORDER BY os.slot_date DESC, os.time_start'
     return conn.execute(sql, params).fetchall()
+
+
+def cancel_student_booking(conn, booking_id, student_user_id):
+    row = conn.execute('''
+        SELECT ob.id, ob.status FROM office_bookings ob
+        WHERE ob.id = %s AND ob.student_user_id = %s
+    ''', (booking_id, student_user_id)).fetchone()
+    if not row:
+        return False, 'Запись не найдена'
+    if row['status'] not in ('pending', 'confirmed'):
+        return False, 'Запись уже отменена'
+    conn.execute(
+        "UPDATE office_bookings SET status = 'cancelled' WHERE id = %s",
+        (booking_id,),
+    )
+    return True, None
 
 
 def list_student_bookings(conn, student_user_id):

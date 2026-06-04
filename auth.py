@@ -2,6 +2,8 @@ from functools import wraps
 
 from flask import flash, redirect, session, url_for
 
+from utils import format_fio
+
 
 def login_required(f):
     @wraps(f)
@@ -31,6 +33,8 @@ def role_required(*roles):
 def redirect_after_login(role):
     if role == 'admin':
         return redirect(url_for('admin_panel'))
+    if role == 'guard':
+        return redirect(url_for('guard_scan'))
     return redirect(url_for('index'))
 
 
@@ -45,10 +49,4 @@ def populate_session(user_row, group_name=None):
 
 
 def format_display_name(user_row):
-    if not user_row:
-        return 'Пользователь'
-    first = (user_row.get('first_name') or '').strip()
-    middle = (user_row.get('middle_name') or '').strip()
-    last = (user_row.get('last_name') or '').strip()
-    full = ' '.join(p for p in (first, middle, last) if p).strip()
-    return full or 'Пользователь'
+    return format_fio(row=user_row)

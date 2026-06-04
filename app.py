@@ -24,18 +24,20 @@ from db.queries.groups import (
     search_groups,
 )
 from db.queries.office import (
-    create_booking, create_office_slot, delete_office_slot, get_available_slots_for_student,
-    get_teacher_slots, list_slot_bookings, list_student_bookings,
-    list_teacher_slots_summary, student_can_book_slot, student_slot_lesson_overlap,
-    update_booking_status, update_office_slot,
+    cancel_student_booking, create_booking, create_office_slot, delete_office_slot,
+    get_available_slots_for_student, get_teacher_slots, list_slot_bookings,
+    list_student_bookings, list_teacher_slots_summary, student_can_book_slot,
+    student_slot_lesson_overlap, update_booking_status, update_office_slot,
 )
+from db.queries.qr_tokens import get_valid_token, issue_token
+from db.queries.settings import get_setting, mask_token, set_setting
 from db.queries.external_schedule import list_vyatsu_link_statuses
 from db.queries.schedule import (
     get_group_schedule, get_schedule_events, get_latest_effective_from,
     get_teacher_lesson_events, list_schedule_teacher_names,
 )
 from db.queries.users import (
-    create_student_user, create_teacher_user, delete_user, email_exists,
+    create_guard_user, create_student_user, create_teacher_user, delete_user, email_exists,
     get_student_profile, get_teacher_profile, get_teacher_public,
     get_user_by_email, get_user_by_id,
     count_students_admin, list_students_admin, list_teachers_admin, list_teachers_public,
@@ -63,12 +65,31 @@ from db.queries.calendar_meta import (
 from services.calendar_nav import build_calendar_nav, date_range_for_nav
 from services.vk_news import VK_GROUP_URL, fetch_vk_news, load_cached_news_formatted
 from utils import (
-    check_password, get_course_from_group, hash_card_number, hash_password,
+    check_password, format_fio, get_course_from_group, hash_card_number, hash_password,
     is_card_number_valid, is_name_part_valid, is_password_allowed,
     normalize_building_number, validate_office_room,
 )
 
 app = Flask(__name__)
+
+
+@app.template_filter('fio')
+def template_fio(row):
+    return format_fio(row=row)
+
+
+def _qr_image_url(token):
+    gate_url = url_for('gate_entry', token=token, _external=True)
+    return (
+        'https://api.qrserver.com/v1/create-qr-code/?size=260x260&data='
+        + quote_plus(gate_url)
+    )
+
+
+def _refresh_user_qr(user_id, subject_type):
+    with get_db() as conn:
+        token, expires = issue_token(conn, user_id, subject_type)
+    return _qr_image_url(token), token, expires
 app.secret_key = os.getenv('FLASK_SECRET_KEY') or os.getenv('SECRET_KEY') or os.urandom(32).hex()
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -307,24 +328,9 @@ def dashboard():
         user = get_student_profile(conn, session['user_id'])
     if not user or not user.get('card_number_hash'):
         return render_template('dashboard.html', card=None, user=session, profile=None)
-    fio = ' '.join(filter(None, [
-        user.get('last_name'), user.get('first_name'), user.get('middle_name'),
-    ])).strip()
+    fio = format_fio(row=user)
     masked = f'****{user["card_number_last4"]}' if user.get('card_number_last4') else 'скрыт'
-    qr_payload = {
-        'type': 'vyatsu_student_card',
-        'student_id': user.get('student_id', ''),
-        'fio': fio,
-        'group': user.get('group_name', ''),
-        'course': user.get('course_number'),
-        'study_form': user.get('study_form'),
-        'issue_date': str(user.get('issue_date') or ''),
-        'number': masked,
-        'user_id': user['id'],
-    }
-    qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=' + quote_plus(
-        json.dumps(qr_payload, ensure_ascii=False)
-    )
+    qr_url, _, _ = _refresh_user_qr(user['id'], 'student')
     return render_template(
         'dashboard.html',
         card=user,
@@ -373,7 +379,7 @@ def schedule_page():
                 events = get_schedule_events(conn, group, dfrom, dto)
                 bookings = list_student_bookings(conn, session['user_id'])
                 for b in bookings:
-                    if b['status'] != 'rejected':
+                    if b['status'] not in ('rejected', 'cancelled'):
                         events.append(booking_to_event(b))
         except Exception as exc:
             flash(f'Ошибка расписания: {exc}')
@@ -419,9 +425,13 @@ def api_schedule_events():
 def teacher_dashboard():
     with get_db() as conn:
         profile = get_teacher_profile(conn, session['user_id'])
+    qr_url = None
+    if profile:
+        qr_url, _, _ = _refresh_user_qr(session['user_id'], 'teacher')
     return render_template(
         'teacher/dashboard.html',
         profile=dict(profile) if profile else None,
+        qr_url=qr_url,
         user=session,
     )
 
@@ -602,7 +612,9 @@ def appointment_list():
 @login_required
 @role_required('student')
 def appointment_mine():
-    return redirect(url_for('schedule_page'))
+    with get_db() as conn:
+        bookings = list_student_bookings(conn, session['user_id'])
+    return render_template('appointment_mine.html', bookings=bookings)
 
 
 @app.route('/appointment/<int:teacher_id>', methods=['GET', 'POST'])
@@ -622,9 +634,13 @@ def appointment_teacher(teacher_id):
                 )
                 ok, err = create_booking(conn, slot_id, session['user_id'])
                 if ok:
-                    flash('Вы записаны. Смотрите в расписании.')
-                    if overlap_msg:
-                        flash(overlap_msg, 'warning')
+                    flash(
+                        'Вы записаны. ' + (overlap_msg + ' ' if overlap_msg else '')
+                        + 'Смотрите в расписании.',
+                        'warning' if overlap_msg else '',
+                    )
+                elif err == 'Вы уже записаны':
+                    flash(err, 'warning')
                 else:
                     flash(err or 'Не удалось записаться')
             else:
@@ -719,6 +735,14 @@ def admin_panel():
                     delete_user(conn, uid)
                 flash('Преподаватель удалён.')
             return redirect(url_for('admin_panel', tab='teachers'))
+        if action == 'save_vk_token':
+            token = request.form.get('vk_access_token', '').strip()
+            with get_db() as conn:
+                set_setting(conn, 'vk_access_token', token)
+            flash('VK-токен сохранён.' if token else 'VK-токен удалён.')
+            return redirect(url_for('admin_panel', tab='help'))
+        if action == 'create_guard':
+            return _admin_create_guard()
 
     group_id = request.args.get('group_id', type=int)
     search_q = request.args.get('q', '').strip()
@@ -740,9 +764,17 @@ def admin_panel():
 
     total_pages = max(1, (students_total + per_page - 1) // per_page)
 
+    vk_token_masked = ''
+    try:
+        with get_db() as conn:
+            vk_token_masked = mask_token(get_setting(conn, 'vk_access_token', ''))
+    except Exception:
+        pass
+
     return render_template(
         'admin_panel.html',
         tab=tab,
+        vk_token_masked=vk_token_masked,
         students=students,
         students_total=students_total,
         students_page=page,
@@ -896,6 +928,8 @@ def _admin_create_teacher():
         create_teacher_user(
             conn, email, hash_password(password), last_name, first_name,
             middle_name or None, position, office, st_id,
+            request.form.get('pass_number', '').strip() or None,
+            request.form.get('department', '').strip() or None,
         )
     flash('Преподаватель создан.')
     return redirect(url_for('admin_panel', tab='teachers'))
@@ -922,9 +956,126 @@ def _admin_update_teacher():
         update_teacher(
             conn, user_id, email, last_name, first_name, middle_name or None,
             position, office, st_id,
+            request.form.get('pass_number', '').strip() or None,
+            request.form.get('department', '').strip() or None,
         )
     flash('Преподаватель обновлён.')
     return redirect(url_for('admin_panel', tab='teachers'))
+
+
+def _admin_create_guard():
+    email = request.form.get('email', '').strip()
+    password = request.form.get('password', '').strip()
+    last_name = request.form.get('last_name', '').strip()
+    first_name = request.form.get('first_name', '').strip()
+    middle_name = request.form.get('middle_name', '').strip()
+    if not all([email, password, last_name, first_name]):
+        flash('Заполните email, пароль и ФИО охранника.')
+        return redirect(url_for('admin_panel', tab='help'))
+    if not is_password_allowed(password):
+        flash('Пароль: только латиница и цифры.')
+        return redirect(url_for('admin_panel', tab='help'))
+    with get_db() as conn:
+        if email_exists(conn, email):
+            flash('Email уже занят.')
+            return redirect(url_for('admin_panel', tab='help'))
+        create_guard_user(
+            conn, email, hash_password(password),
+            last_name, first_name, middle_name or None,
+        )
+    flash('Охранник создан.')
+    return redirect(url_for('admin_panel', tab='help'))
+
+
+@app.route('/appointment/cancel/<int:booking_id>', methods=['POST'])
+@login_required
+@role_required('student')
+def appointment_cancel(booking_id):
+    with get_db() as conn:
+        ok, err = cancel_student_booking(conn, booking_id, session['user_id'])
+    if ok:
+        flash('Запись отменена.')
+    else:
+        flash(err or 'Не удалось отменить', 'warning')
+    return redirect(request.referrer or url_for('appointment_mine'))
+
+
+@app.route('/gate/<token>')
+def gate_entry(token):
+    return render_template('gate_entry.html', token=token)
+
+
+@app.route('/guard')
+@login_required
+@role_required('guard')
+def guard_scan():
+    return render_template('guard/scan.html')
+
+
+@app.route('/api/guard/verify', methods=['POST'])
+@login_required
+@role_required('guard')
+def api_guard_verify():
+    data = request.get_json(silent=True) or {}
+    token_str = (data.get('token') or '').strip()
+    if not token_str:
+        return jsonify({'ok': False, 'error': 'Токен не указан'}), 400
+    with get_db() as conn:
+        row = get_valid_token(conn, token_str)
+        if not row or not row.get('is_active'):
+            return jsonify({'ok': False, 'error': 'Токен недействителен или истёк'}), 404
+        subject = row['subject_type']
+        fio = format_fio(row=row)
+        photo_url = None
+        pass_number = None
+        department = None
+        position_title = None
+        group_name = None
+        if subject == 'student':
+            prof = get_student_profile(conn, row['user_id'])
+            if prof and prof.get('face_photo_path'):
+                photo_url = url_for(
+                    'student_card_face_photo', user_id=row['user_id'], _external=True,
+                )
+            group_name = prof.get('group_name') if prof else None
+        else:
+            prof = get_teacher_profile(conn, row['user_id'])
+            if prof:
+                pass_number = prof.get('pass_number')
+                department = prof.get('department')
+                position_title = prof.get('position_title')
+        exp = row['expires_at']
+        valid_until = exp.isoformat() if hasattr(exp, 'isoformat') else str(exp)
+    return jsonify({
+        'ok': True,
+        'subject_type': subject,
+        'fio': fio,
+        'photo_url': photo_url,
+        'pass_number': pass_number,
+        'department': department,
+        'position_title': position_title,
+        'group': group_name,
+        'valid_until': valid_until,
+    })
+
+
+@app.route('/api/my-qr-token')
+@login_required
+def api_my_qr_token():
+    role = session.get('role')
+    if role == 'student':
+        subject = 'student'
+    elif role == 'teacher':
+        subject = 'teacher'
+    else:
+        return jsonify({'error': 'Недоступно'}), 403
+    qr_url, token, expires = _refresh_user_qr(session['user_id'], subject)
+    return jsonify({
+        'ok': True,
+        'qr_url': qr_url,
+        'token': token,
+        'expires_at': expires.isoformat() if hasattr(expires, 'isoformat') else str(expires),
+    })
 
 
 @app.route('/api/calendar/event-meta')
@@ -968,7 +1119,7 @@ def api_calendar_notes():
             conn, session['user_id'], event_key,
             data.get('event_type', 'lesson'), data.get('note_text', ''),
         )
-    return jsonify({'ok': True})
+    return jsonify({'ok': True, 'message': 'Заметка сохранена'})
 
 
 @app.route('/api/calendar/attachments', methods=['POST'])
@@ -1000,6 +1151,7 @@ def api_calendar_attachments_upload():
         )
     return jsonify({
         'ok': True,
+        'message': 'Файл добавлен',
         'id': aid,
         'url': url_for('api_calendar_attachment_download', attachment_id=aid),
         'name': file.filename,
@@ -1047,6 +1199,7 @@ def api_calendar_note_files_upload():
         )
     return jsonify({
         'ok': True,
+        'message': 'Файл добавлен',
         'id': fid,
         'url': url_for('api_calendar_note_file_download', file_id=fid),
         'name': file.filename,

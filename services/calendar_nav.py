@@ -6,6 +6,15 @@ MONTHS_RU = (
     'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
 )
 
+WEEKDAYS_RU_SHORT = ('пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс')
+
+
+def day_label_for(d):
+    if isinstance(d, str):
+        d = date.fromisoformat(d[:10])
+    wd = WEEKDAYS_RU_SHORT[d.weekday()]
+    return f'{d.day} {MONTHS_RU[d.month - 1].lower()} {d.year}, {wd}'
+
 
 def week_start_on(d):
     if isinstance(d, str):
@@ -64,6 +73,7 @@ def build_calendar_nav(view=None, week=None, day=None, month=None):
             'today': today.isoformat(),
             'view': 'day',
             'day': active.isoformat(),
+            'day_label': day_label_for(active),
             'week_start': ws.isoformat(),
             'month': f'{active.year:04d}-{active.month:02d}',
             'month_label': month_label_for(active),
