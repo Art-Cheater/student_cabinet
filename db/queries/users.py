@@ -228,6 +228,14 @@ def update_teacher(conn, user_id, email, last_name, first_name, middle_name,
     ''', (position_title, office_room, schedule_teacher_id, pass_number, department, user_id))
 
 
+def update_guard_user(conn, user_id, email, last_name, first_name, middle_name):
+    conn.execute('''
+        UPDATE users
+        SET email = %s, last_name = %s, first_name = %s, middle_name = %s
+        WHERE id = %s
+    ''', (email, last_name, first_name, middle_name, user_id))
+
+
 def update_student_pass_number(conn, user_id, pass_number):
     conn.execute('''
         UPDATE student_profiles SET pass_number = %s WHERE user_id = %s

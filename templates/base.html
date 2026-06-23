@@ -52,7 +52,7 @@
                             <a href="{{ url_for('admin_panel', tab='students') }}" class="{% if ep == 'admin_panel' and request.args.get('tab', 'students') == 'students' %}nav-link-active{% endif %}">Студенты</a>
                             <a href="{{ url_for('admin_panel', tab='teachers') }}" class="{% if ep == 'admin_panel' and request.args.get('tab') == 'teachers' %}nav-link-active{% endif %}">Преподаватели</a>
                             <a href="{{ url_for('admin_panel', tab='schedule') }}" class="{% if ep == 'admin_panel' and request.args.get('tab') == 'schedule' %}nav-link-active{% endif %}">Расписание</a>
-                            <a href="{{ url_for('admin_panel', tab='guards') }}" class="{% if ep == 'admin_panel' and request.args.get('tab') == 'guards' %}nav-link-active{% endif %}">Охрана</a>
+                            <a href="{{ url_for('admin_panel', tab='guards') }}" class="{% if ep == 'admin_panel' and request.args.get('tab') == 'guards' %}nav-link-active{% endif %}">Сотрудники охраны</a>
                         {% endif %}
                     {% else %}
                         <a href="{{ url_for('login') }}" class="{% if ep == 'login' %}nav-link-active{% endif %}">Вход</a>

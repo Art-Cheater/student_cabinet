@@ -52,6 +52,7 @@ from db.queries.users import (
     count_students_admin, list_guards_admin, list_students_admin, list_teachers_admin,
     list_teachers_public,
     update_student, update_student_pass_number, update_teacher, update_teacher_pass_number,
+    update_guard_user,
 )
 from parsers.vyatsu_teacher_busy import get_teacher_university_events
 from services.calendar_events import (
@@ -896,6 +897,8 @@ def appointment_teacher(teacher_id):
 @role_required('admin')
 def admin_panel():
     tab = request.args.get('tab', 'students')
+    if tab == 'help':
+        return redirect(url_for('admin_panel', tab='guards'))
     parser_output = None
     uploaded_filename = None
 
@@ -942,6 +945,8 @@ def admin_panel():
             return redirect(url_for('admin_panel', tab='teachers'))
         if action == 'create_guard':
             return _admin_create_guard()
+        if action == 'update_guard':
+            return _admin_update_guard()
 
     group_id = request.args.get('group_id', type=int)
     search_q = request.args.get('q', '').strip()
@@ -1179,7 +1184,32 @@ def _admin_create_guard():
             conn, email, hash_password(password),
             last_name, first_name, middle_name or None,
         )
-    flash('Охранник создан.')
+    flash('Сотрудник охраны создан.')
+    return redirect(url_for('admin_panel', tab='guards'))
+
+
+def _admin_update_guard():
+    user_id = request.form.get('user_id', type=int)
+    email = request.form.get('email', '').strip()
+    last_name = request.form.get('last_name', '').strip()
+    first_name = request.form.get('first_name', '').strip()
+    middle_name = request.form.get('middle_name', '').strip()
+    if not user_id or not all([email, last_name, first_name]):
+        flash('Заполните email и ФИО.')
+        return redirect(url_for('admin_panel', tab='guards'))
+    with get_db() as conn:
+        existing = conn.execute(
+            'SELECT u.id FROM users u JOIN roles r ON r.id = u.role_id AND r.code = %s WHERE u.id = %s',
+            ('guard', user_id),
+        ).fetchone()
+        if not existing:
+            flash('Сотрудник охраны не найден.')
+            return redirect(url_for('admin_panel', tab='guards'))
+        if email_exists(conn, email, exclude_user_id=user_id):
+            flash('Email уже занят.')
+            return redirect(url_for('admin_panel', tab='guards'))
+        update_guard_user(conn, user_id, email, last_name, first_name, middle_name or None)
+    flash('Данные сотрудника охраны сохранены.')
     return redirect(url_for('admin_panel', tab='guards'))
 
 
@@ -1706,7 +1736,7 @@ def admin_sync_campus():
         flash('Корпуса и общежития обновлены.')
     except Exception as exc:
         flash(f'Ошибка синхронизации: {exc}')
-    return redirect(url_for('admin_panel', tab='help'))
+    return redirect(url_for('admin_panel', tab='schedule'))
 
 
 @app.route('/news')

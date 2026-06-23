@@ -4,7 +4,7 @@
 <div class="admin-panel-page">
     <div class="dashboard-welcome reveal-on-scroll">
         <h1 class="heading-brand">Админ-кабинет</h1>
-        <p class="welcome-sub">Управление студентами, преподавателями и расписанием</p>
+        <p class="welcome-sub">Управление студентами, преподавателями, расписанием и сотрудниками охраны</p>
     </div>
 
     <div class="admin-tab-panel {% if tab == 'students' %}active{% endif %}">
@@ -222,8 +222,9 @@
     </div>
 
     <div class="admin-tab-panel {% if tab == 'guards' %}active{% endif %}">
-        <h3>Охрана</h3>
-        <details><summary>Добавить охранника</summary>
+        <h3>Сотрудники охраны</h3>
+        <p class="admin-note">Создание учётных записей для проверки QR-пропусков студентов и преподавателей. После входа сотрудник открывает «Проверка QR» в меню.</p>
+        <details><summary>Добавить сотрудника охраны</summary>
         <form method="POST" style="margin:1rem 0; max-width:480px;">
             {% include 'partials/csrf_input.html' %}
             <input type="hidden" name="action" value="create_guard">
@@ -244,6 +245,17 @@
                 <td>{{ g.email }}</td>
                 <td>{{ g|fio }}</td>
                 <td>
+                    <details><summary>Изменить</summary>
+                    <form method="POST" style="margin:0.5rem 0;">
+                        {% include 'partials/csrf_input.html' %}
+                        <input type="hidden" name="action" value="update_guard">
+                        <input type="hidden" name="user_id" value="{{ g.user_id }}">
+                        <div class="form-group"><label>Email</label><input type="email" name="email" value="{{ g.email }}" required></div>
+                        <div class="form-group"><label>Фамилия</label><input type="text" name="last_name" value="{{ g.last_name }}" required></div>
+                        <div class="form-group"><label>Имя</label><input type="text" name="first_name" value="{{ g.first_name }}" required></div>
+                        <div class="form-group"><label>Отчество</label><input type="text" name="middle_name" value="{{ g.middle_name or '' }}"></div>
+                        <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
+                    </form>
                     <form method="POST" onsubmit="return confirm('Удалить?');">
                         {% include 'partials/csrf_input.html' %}
                         <input type="hidden" name="action" value="delete_user">
@@ -251,6 +263,7 @@
                         <input type="hidden" name="user_id" value="{{ g.user_id }}">
                         <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
                     </form>
+                    </details>
                 </td>
             </tr>
             {% else %}

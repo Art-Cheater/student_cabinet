@@ -32,14 +32,16 @@ cd student_cabinet
 git pull
 docker compose exec app python database/migrate_app_settings.py
 docker compose exec app python database/migrate_guard_qr.py
-docker compose exec app python database/migrate_slot_queue.py
-docker compose exec app python database/migrate_teacher_notes.py
 docker compose up -d --build
 ```
 
-База **не слетает**, если не использовать `docker compose down -v`.
+Остальные миграции одной командой (если давно не обновлялись):
 
-Первый охранник: админка → вкладка «Справка VK» → блок «Охранник».
+```bash
+docker compose exec app python database/migrate_all.py
+```
+
+Первый охранник: админка → вкладка **«Сотрудники охраны»** → «Добавить сотрудника охраны».
 
 Новости VK: парсинг группы [kollegevyatsu](https://vk.com/kollegevyatsu) без токена, обновление раз в час (`python parsers/vk_news_sync.py` или фоновый поток в app).
 
@@ -50,7 +52,7 @@ docker compose up -d --build
 - **student** — кабинет, QR-пропуск, запись к преподавателю
 - **teacher** — слоты, расписание, QR-пропуск (№ удостоверения, должность, подразделение в админке)
 - **guard** — `/guard`, сканирование QR (камера на телефоне нужен **HTTPS** на сервере; локально — ручной ввод ссылки)
-- **admin** — студенты, преподаватели, расписание, создание охранника
+- **admin** — студенты, преподаватели, расписание, сотрудники охраны
 
 ## Требования
 

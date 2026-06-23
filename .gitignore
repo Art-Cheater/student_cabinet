@@ -1,21 +1,42 @@
-vk_token.txt
-ключ.txt
-__pycache__/
-*.pyc
-*.db
-static/photos/
-schedule_parser/uploads/
-private_storage/
-venv/
-.venv/
-env/
+# Secrets and local config
 .env
 .env.*
 !.env.example
-uploads/
-private_storage/
+vk_token.txt
+ключ.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+env/
+
+# Database dumps and local SQLite
+*.db
 *.sqlite
 *.sqlite3
+
+# User uploads and private files (not in git)
+uploads/
+private_storage/
+static/photos/
+schedule_parser/uploads/
+
+# Logs and test artifacts
 *.log
 Test/run/
 Test/dev_certs/
+dev_certs/
+sqlmap_results/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db
+.DS_Store
