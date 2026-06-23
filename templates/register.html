@@ -8,6 +8,7 @@
         </div>
     {% endif %}
     <form method="POST">
+        {% include 'partials/csrf_input.html' %}
         <div class="form-group">
             <label>ФИО</label>
             <input type="text" name="full_name" required>

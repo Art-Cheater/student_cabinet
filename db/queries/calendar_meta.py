@@ -88,7 +88,25 @@ def user_can_download_attachment(conn, user_id, role, attachment_row):
         return True
     if attachment_row['teacher_user_id'] == user_id:
         return True
-    slot_id = resolve_slot_id_from_event_key(conn, attachment_row.get('event_key') or '')
+    event_key = attachment_row.get('event_key') or ''
+    if role == 'student' and event_key.startswith('lesson:'):
+        parts = event_key.split(':')
+        if len(parts) >= 2:
+            try:
+                lesson_id = int(parts[1])
+            except ValueError:
+                lesson_id = None
+            if lesson_id:
+                from db.queries.users import get_student_profile
+                prof = get_student_profile(conn, user_id)
+                if prof and prof.get('group_id'):
+                    row = conn.execute(
+                        'SELECT 1 FROM lessons WHERE id = %s AND group_id = %s',
+                        (lesson_id, prof['group_id']),
+                    ).fetchone()
+                    if row:
+                        return True
+    slot_id = resolve_slot_id_from_event_key(conn, event_key)
     if not slot_id and (attachment_row.get('event_key') or '').startswith('slot:'):
         try:
             slot_id = int(attachment_row['event_key'].split(':', 1)[1])
@@ -101,6 +119,39 @@ def user_can_download_attachment(conn, user_id, role, attachment_row):
               AND status IN ('pending', 'confirmed')
         ''', (slot_id, user_id)).fetchone()
         return row is not None
+    return False
+
+
+def teacher_can_attach_to_event(conn, teacher_user_id, event_key, event_type, slot_id=None):
+    event_key = (event_key or '').strip()
+    event_type = (event_type or '').strip()
+    if event_type == 'office_slot' or event_key.startswith('slot:'):
+        sid = slot_id
+        if not sid:
+            try:
+                sid = int(event_key.split(':', 1)[1])
+            except (ValueError, IndexError):
+                return False
+        row = conn.execute(
+            'SELECT teacher_user_id FROM office_slots WHERE id = %s', (sid,),
+        ).fetchone()
+        return row and row['teacher_user_id'] == teacher_user_id
+    if event_type == 'lesson' or event_key.startswith('lesson:'):
+        parts = event_key.split(':')
+        if len(parts) < 2:
+            return False
+        try:
+            lesson_id = int(parts[1])
+        except ValueError:
+            return False
+        from db.queries.users import get_teacher_profile
+        prof = get_teacher_profile(conn, teacher_user_id)
+        if not prof or not prof.get('schedule_teacher_id'):
+            return False
+        lesson = conn.execute(
+            'SELECT schedule_teacher_id FROM lessons WHERE id = %s', (lesson_id,),
+        ).fetchone()
+        return lesson and lesson['schedule_teacher_id'] == prof['schedule_teacher_id']
     return False
 
 
@@ -147,6 +198,29 @@ def get_note_file(conn, file_id):
     return conn.execute(
         'SELECT * FROM calendar_note_files WHERE id = %s', (file_id,),
     ).fetchone()
+
+
+def delete_note(conn, user_id, event_key):
+    conn.execute('''
+        DELETE FROM calendar_notes
+        WHERE user_id = %s AND event_key = %s
+    ''', (user_id, event_key))
+
+
+def delete_note_file(conn, user_id, file_id):
+    row = conn.execute('''
+        DELETE FROM calendar_note_files
+        WHERE id = %s AND user_id = %s
+        RETURNING stored_path
+    ''', (file_id, user_id)).fetchone()
+    if row and row['stored_path']:
+        path = row['stored_path']
+        if os.path.isfile(path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+    return row is not None
 
 
 def insert_note_file(conn, user_id, event_key, event_type, stored_path, original_name):

@@ -1,20 +1,33 @@
 {% extends "base.html" %}
 {% block body_class %}guard-scan-page{% endblock %}
 {% block content %}
-<div class="guard-scan-page">
-    <h1 class="heading-brand">Проверка пропуска</h1>
-    <p class="hint guard-scan-hint">Откройте камеру и наведите на QR-код с экрана студента или преподавателя.</p>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/access-premium.css') }}">
 
-    <div id="qr-reader" class="guard-qr-reader"></div>
-    <p id="cameraStatus" class="guard-camera-status">Нажмите «Включить камеру»</p>
-    <button type="button" class="btn btn-primary btn-block guard-camera-btn" id="startCameraBtn">
-        Включить камеру
-    </button>
-    <button type="button" class="btn btn-outline btn-block" id="stopCameraBtn" hidden>
-        Остановить камеру
-    </button>
+<div class="guard-access-page">
+    <div class="access-page-header">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <h1>Сканер доступа</h1>
+    </div>
 
-    <details class="guard-manual-block">
+    <div class="guard-viewfinder">
+        <div id="qr-reader" class="guard-qr-reader"></div>
+        <div class="guard-scan-overlay">
+            <div class="guard-scan-frame"></div>
+            <p class="guard-scan-label">Наведите камеру на QR-код</p>
+        </div>
+        <div id="guardLoading" class="guard-loading">
+            <div class="guard-spinner"></div>
+            <span>Проверка токена…</span>
+        </div>
+    </div>
+
+    <p id="cameraStatus" class="guard-camera-status hint">Нажмите «Включить камеру»</p>
+    <button type="button" class="access-btn-primary" id="startCameraBtn" style="margin-top:16px;">Включить камеру</button>
+    <button type="button" class="btn btn-outline btn-block" id="stopCameraBtn" hidden style="margin-top:8px;">Остановить камеру</button>
+
+    <details class="guard-manual-block" style="margin-top:16px;">
         <summary>Нет камеры / ввести код вручную</summary>
         <div class="form-group">
             <label>Ссылка или UUID из QR</label>
@@ -25,6 +38,7 @@
 
     <div id="guardPassResult" class="guard-pass-panel" hidden></div>
 </div>
+
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/html5-qrcode.min.css') }}">
 <script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/guard-scan.js') }}"></script>

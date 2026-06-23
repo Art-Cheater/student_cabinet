@@ -1,0 +1,1 @@
+http://localhost:5000/map?id=1 (GET)  # C:\Users\adomr\AppData\Local\Programs\Python\Python312\Scripts\sqlmap -u http://localhost:5000/map?id=1 --batch --level 2 --risk 1 --random-agent --output-dir sqlmap_results --flush-session --timeout 30

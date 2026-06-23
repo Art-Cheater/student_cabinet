@@ -4,7 +4,7 @@
 <section class="bento-grid">
     <div class="bento-cell bento-welcome">
         <h1 class="heading-brand">С возвращением, {{ session.user_name }}!</h1>
-        <p class="welcome-sub">Цифровой кампус ВятГУ</p>
+        <p class="welcome-sub">колледж ВятГУ</p>
     </div>
 
     {% if session.role == 'student' %}
@@ -57,7 +57,7 @@
     <a href="{{ url_for('map') }}" class="bento-cell bento-map">
         <span class="bento-icon" aria-hidden="true">🗺️</span>
         <h3>Карта</h3>
-        <p>Корпуса ВятГУ</p>
+        <p>Корпуса колледжа</p>
         <span class="bento-arrow" aria-hidden="true">→</span>
     </a>
     <a href="{{ url_for('faq') }}" class="bento-cell bento-faq">
@@ -78,9 +78,15 @@
             {% endif %}
             {% for item in news_preview %}
             <article class="bento-news-item">
+                {% if item.url %}
+                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="bento-news-link">
+                {% endif %}
                 <h4>{{ item.title }}</h4>
                 {% if item.date %}<p class="hint">{{ item.date }}</p>{% endif %}
                 <p>{{ (item.summary or '')[:100] }}{% if (item.summary or '')|length > 100 %}…{% endif %}</p>
+                {% if item.url %}
+                </a>
+                {% endif %}
             </article>
             {% else %}
             {% if not news_preview %}
@@ -94,26 +100,26 @@
 
 {% else %}
 <div class="hero">
-    <h1 class="heading-brand">Личный кабинет ВятГУ</h1>
-    <p>Добро пожаловать в цифровое пространство университета</p>
+    <h1 class="heading-brand">Личный кабинет колледжа ВятГУ</h1>
+    <p>Добро пожаловать в цифровое пространство колледжа</p>
     <div class="buttons">
         <a href="{{ url_for('login') }}" class="btn btn-primary">Вход</a>
     </div>
 </div>
 
 <div class="features">
-    <div class="feature reveal-on-scroll">
+    <a href="{{ url_for('login') }}" class="feature reveal-on-scroll feature-link">
         <h3>Расписание занятий</h3>
         <p>Актуальное расписание для вашей группы</p>
-    </div>
-    <div class="feature reveal-on-scroll">
+    </a>
+    <a href="{{ url_for('login') }}" class="feature reveal-on-scroll feature-link">
         <h3>Цифровой студенческий</h3>
         <p>Студбилет в личном кабинете</p>
-    </div>
-    <div class="feature reveal-on-scroll">
+    </a>
+    <a href="{{ url_for('map') }}" class="feature reveal-on-scroll feature-link">
         <h3>Карта корпусов</h3>
         <p>Навигация по учебным корпусам</p>
-    </div>
+    </a>
 </div>
 {% endif %}
 {% endblock %}

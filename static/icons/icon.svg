@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="96" fill="#0039A6"/>
   <rect x="0" y="0" width="512" height="24" fill="#FFD700"/>
-  <text x="256" y="310" text-anchor="middle" fill="#ffffff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="120" font-weight="700">ВятГУ</text>
+  <text x="256" y="280" text-anchor="middle" fill="#ffffff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="56" font-weight="700">колледж</text>
+  <text x="256" y="350" text-anchor="middle" fill="#FFD700" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="72" font-weight="700">ВятГУ</text>
 </svg>

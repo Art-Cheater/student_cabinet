@@ -105,6 +105,130 @@ nav {
     font-size: 0.9rem;
 }
 
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-notify-menu {
+    position: relative;
+}
+
+.nav-notify-btn {
+    position: relative;
+    background: transparent;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.35rem 0.5rem;
+    line-height: 1;
+}
+
+.nav-notify-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 1rem;
+    height: 1rem;
+    padding: 0 0.25rem;
+    border-radius: 999px;
+    background: #e53935;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 1rem;
+    text-align: center;
+}
+
+.nav-notify-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: min(320px, 90vw);
+    max-height: 70vh;
+    overflow: auto;
+    background: var(--vy-white);
+    border-radius: var(--vy-radius);
+    box-shadow: var(--vy-shadow-hover);
+    padding: 0.75rem;
+    z-index: 210;
+    border: 1px solid var(--vy-border-light);
+}
+
+.nav-notify-dropdown[hidden] {
+    display: none;
+}
+
+.nav-notify-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.nav-notify-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+}
+
+.nav-notify-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    width: 100%;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--vy-border-light);
+    border-radius: 8px;
+    background: var(--vy-bg);
+    cursor: pointer;
+}
+
+.nav-notify-item--unread {
+    border-color: var(--vy-blue);
+    background: rgba(0, 57, 166, 0.06);
+}
+
+.nav-notify-item strong {
+    font-size: 0.85rem;
+    margin-bottom: 0.15rem;
+}
+
+.nav-notify-item span {
+    font-size: 0.8rem;
+    color: var(--vy-text-muted, #666);
+}
+
+.nav-notify-empty {
+    margin: 0.5rem 0;
+}
+
+.queue-passed-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.queue-passed-done {
+    opacity: 0.65;
+    text-decoration: line-through;
+}
+
+.bento-news-link,
+.news-item-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.bento-news-link:hover h4,
+.news-item-link:hover h3 {
+    color: var(--vy-blue);
+}
+
 .nav-logout-btn {
     display: block;
     text-align: center;
@@ -682,14 +806,58 @@ a.card-link .card-arrow {
     align-items: start;
 }
 
-.student-cabinet-qr img {
-    max-width: 220px;
-    border-radius: var(--vy-radius);
+.student-cabinet-grid--triple {
+    grid-template-columns: minmax(0, 1.4fr) minmax(140px, 0.8fr) minmax(160px, 0.9fr);
+    align-items: stretch;
 }
 
-.student-photo-block {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
+.student-cabinet-photo h3,
+.student-cabinet-qr h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+}
+
+.student-photo-preview--compact img,
+.student-photo-preview--compact .student-photo-placeholder {
+    max-width: 180px;
+    margin: 0 auto;
+}
+
+.student-cabinet-photo,
+.student-cabinet-qr {
+    text-align: center;
+}
+
+.teacher-pass-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.teacher-pass-badge {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: var(--campus-gradient);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+.student-cabinet-qr img {
+    max-width: 200px;
+    border-radius: var(--vy-radius);
+    display: block;
+    margin: 0.5rem auto 0;
+}
+
+.student-photo-form {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
     border-top: 1px solid var(--vy-border-light);
 }
 

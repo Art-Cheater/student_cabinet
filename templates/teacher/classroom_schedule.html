@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block body_class %}layout-wide teacher-dashboard-page{% endblock %}
+{% block content %}
+<h2>Занятость кабинетов</h2>
+<p class="hint">Пары и окна приёма в выбранном кабинете.</p>
+
+<form method="GET" class="classroom-picker-form" style="margin-bottom:1rem; max-width:320px;">
+    <input type="hidden" name="view" value="{{ cal.view }}">
+    <input type="hidden" name="week" value="{{ cal.week_start }}">
+    <input type="hidden" name="day" value="{{ cal.day }}">
+    <input type="hidden" name="month" value="{{ cal.month }}">
+    <div class="form-group">
+        <label>Кабинет</label>
+        <select name="classroom_id" onchange="this.form.submit()">
+            <option value="">— выберите —</option>
+            {% for c in classrooms %}
+            <option value="{{ c.id }}" {% if selected_classroom_id == c.id %}selected{% endif %}>
+                {{ c.display_name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+
+{% if not selected_classroom_id %}
+<p class="hint">Выберите кабинет, чтобы увидеть расписание.</p>
+{% else %}
+{% if show_calendar_legend %}
+<div class="calendar-legend">
+    <span class="legend-lesson"><i></i> Пары</span>
+    <span class="legend-slot"><i></i> Приём студентов</span>
+</div>
+{% endif %}
+{% include 'partials/calendar_shell.html' %}
+{% endif %}
+
+{% include 'partials/event_modal.html' %}
+<script src="{{ url_for('static', filename='js/event-modal.js') }}"></script>
+{% endblock %}

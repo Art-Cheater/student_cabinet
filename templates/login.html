@@ -4,6 +4,7 @@
 <div class="auth-form">
     <h2>Вход в личный кабинет</h2>
     <form method="POST">
+        {% include 'partials/csrf_input.html' %}
         <div class="form-group">
             <label>Email (учебная почта)</label>
             <input type="email" name="email" placeholder="student@vyatsu.ru" required>

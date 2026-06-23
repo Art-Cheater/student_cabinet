@@ -4,7 +4,9 @@ Werkzeug==3.0.6
 bcrypt==4.2.1
 openpyxl==3.1.5
 requests==2.32.3
+qrcode[pil]==7.4.2
 psycopg[binary]==3.2.3
 python-dotenv==1.0.1
 beautifulsoup4==4.12.3
+pywebpush==2.0.1
 gunicorn==23.0.0

@@ -1,0 +1,106 @@
+StudentCabinet — база данных PostgreSQL
+========================================
+
+Имя БД: StudentCabinet (Docker: postgres/postgres@db:5432)
+Схемы: public (основное), content (контент и настройки)
+Инициализация: python database/init_db.py
+Миграции: database/migrate_*.py
+
+РОЛИ (roles)
+------------
+users.role_id → roles.id
+
+Коды: student, teacher, admin, guard
+
+ПОЛЬЗОВАТЕЛИ И ПРОФИЛИ
+----------------------
+users — все аккаунты (email, пароль, ФИО, роль)
+
+student_profiles — 1:1 с users (роль student)
+  user_id → users.id
+  group_id → groups.id
+  студбилет: card_number_*, face_photo_path, course, study_form…
+
+teacher_profiles — 1:1 с users (роль teacher)
+  user_id → users.id
+  schedule_teacher_id → schedule_teachers.id (связь с Excel-расписанием)
+  пропуск: pass_number, department, position_title, office_room
+
+guard — отдельная роль в users, без отдельной таблицы профиля
+
+ГРУППЫ И РАСПИСАНИЕ
+-------------------
+groups — учебные группы (из Excel)
+
+schedule_teachers — ФИО преподавателей из Excel (справочник)
+
+uploads — загрузки файлов расписания (manual / vk)
+
+lessons — пары (шаблон на неделю)
+  upload_id → uploads.id
+  group_id → groups.id
+  schedule_teacher_id → schedule_teachers.id
+  classroom_id → classrooms.id
+
+teacher_external_schedule — кэш занятости с vyatsu.ru
+  teacher_user_id → users.id (преподаватель)
+
+КАМПУС
+------
+buildings — корпуса и общежития (kind: building / dorm)
+
+classrooms — аудитории
+  building_id → buildings.id
+
+ЗАПИСЬ К ПРЕПОДАВАТЕЛЮ
+-----------------------
+office_slots — слоты приёма
+  teacher_user_id → users.id
+  classroom_id → classrooms.id
+
+office_slot_groups — для кого слот (M:N)
+  slot_id → office_slots.id
+  group_id → groups.id
+
+office_bookings — записи студентов
+  slot_id → office_slots.id
+  student_user_id → users.id
+  status: pending | confirmed | rejected | cancelled
+
+КАЛЕНДАРЬ (заметки и файлы)
+----------------------------
+calendar_notes — личные заметки к событию
+  user_id → users.id
+  ключ: event_key + event_type
+
+calendar_attachments — файлы преподавателя к событию
+  teacher_user_id → users.id
+
+calendar_note_files — файлы студента к заметке
+  user_id → users.id
+
+QR / ОХРАНА
+-----------
+qr_access_tokens — одноразовые токены для QR-пропуска
+  user_id → users.id
+  subject_type: student | teacher
+  expires_at, revoked_at
+
+КОНТЕНТ (схема content)
+-----------------------
+content.vk_news_cache — кэш постов VK
+content.faq — вопросы-ответы
+content.app_settings — настройки (напр. VK-токен), key → value
+
+СВЯЗИ (кратко)
+--------------
+roles ← users → student_profiles / teacher_profiles
+groups ← student_profiles, lessons, office_slot_groups
+schedule_teachers ← lessons, teacher_profiles
+users ← office_slots, office_bookings, qr_access_tokens, calendar_*
+buildings ← classrooms ← lessons, office_slots
+
+Файлы вне БД
+------------
+Фото студбилета: private_storage/student_cards/
+Вложения календаря: uploads/calendar_attachments/, uploads/calendar_note_files/

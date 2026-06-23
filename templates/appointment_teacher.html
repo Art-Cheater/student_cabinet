@@ -16,7 +16,11 @@
 
     {% if not slots_by_date %}
     <div class="admin-note">
+        {% if not group_id %}
+        <p>Группа не указана в профиле — запись к преподавателям недоступна. Обратитесь к администратору.</p>
+        {% else %}
         <p>Свободных окон для записи пока нет. Выберите другого преподавателя.</p>
+        {% endif %}
     </div>
     {% else %}
     <h2 class="section-title">Дни с доступной записью</h2>
@@ -54,6 +58,7 @@
                   data-overlap-msg="{{ (slot_warnings or {})[s.id] }}"
                   {% endif %}
                   onsubmit="return confirmBooking(this);">
+                {% include 'partials/csrf_input.html' %}
                 <input type="hidden" name="slot_id" value="{{ s.id }}">
                 <button type="submit" class="btn btn-accent book-slot-btn">Записаться</button>
             </form>

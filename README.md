@@ -1,4 +1,4 @@
-# Student Cabinet (VyatSU)
+# Student Cabinet (колледж ВятГУ)
 
 Веб-приложение личного кабинета на Flask с PostgreSQL:
 - единый вход для студентов, преподавателей и администратора (роли в БД);
@@ -32,17 +32,25 @@ cd student_cabinet
 git pull
 docker compose exec app python database/migrate_app_settings.py
 docker compose exec app python database/migrate_guard_qr.py
+docker compose exec app python database/migrate_slot_queue.py
+docker compose exec app python database/migrate_teacher_notes.py
 docker compose up -d --build
 ```
 
-Первый охранник: админка → вкладка «Справка VK» → блок «Охранник». VK-токен можно ввести там же (без правки `.env`).
+База **не слетает**, если не использовать `docker compose down -v`.
+
+Первый охранник: админка → вкладка «Справка VK» → блок «Охранник».
+
+Новости VK: парсинг группы [kollegevyatsu](https://vk.com/kollegevyatsu) без токена, обновление раз в час (`python parsers/vk_news_sync.py` или фоновый поток в app).
+
+Камера охранника на iPhone: сайт должен открываться по **HTTPS** на сервере.
 
 ## Роли
 
 - **student** — кабинет, QR-пропуск, запись к преподавателю
 - **teacher** — слоты, расписание, QR-пропуск (№ удостоверения, должность, подразделение в админке)
 - **guard** — `/guard`, сканирование QR (камера на телефоне нужен **HTTPS** на сервере; локально — ручной ввод ссылки)
-- **admin** — студенты, преподаватели, расписание, VK-токен, создание охранника
+- **admin** — студенты, преподаватели, расписание, создание охранника
 
 ## Требования
 
@@ -91,13 +99,21 @@ python app.py
 
 После `init_db.py`: email из `ADMIN_EMAIL` (по умолчанию `admin@vyatsu.ru`), пароль из `ADMIN_PASSWORD` (`admin123` в примере).
 
-## VK-токен
+## Новости VK
 
-1. Сообщество VK → Работа с API → Создать ключ (стена, документы).
-2. В `.env`: `VK_ACCESS_TOKEN=...`
-3. Расписание из постов: `python parsers/vk_schedule_sync.py`
+Лента с [vk.com/kollegevyatsu](https://vk.com/kollegevyatsu): парсинг виджета группы, без токена. В БД хранится до 10 постов с фото; обновление раз в час (фоновый поток в `app.py` или cron):
 
-Файл `vk_token.txt` не используется.
+```bash
+python parsers/vk_news_sync.py
+```
+
+## Расписание из VK
+
+```bash
+python parsers/vk_schedule_sync.py
+```
+
+(нужен `VK_ACCESS_TOKEN` в `.env` — отдельно от новостей)
 
 ## Расписание Excel
 

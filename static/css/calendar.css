@@ -157,15 +157,71 @@
 }
 
 .calendar-event.lesson {
-    background: #f8faff;
-    border-left-color: var(--vy-blue);
+    background: var(--cal-color-lesson, #f8faff);
+    border-left-color: var(--cal-color-lesson-border, var(--vy-blue));
     transform: rotate(-0.4deg);
 }
 
 .calendar-event.slot {
-    background: #fffbeb;
-    border-left-color: #FFC107;
+    background: var(--cal-color-slot, #fffbeb);
+    border-left-color: var(--cal-color-slot-border, #FFC107);
     transform: rotate(0.35deg);
+}
+
+.calendar-event.personal {
+    background: var(--cal-color-personal, #f3e8ff);
+    border-left-color: var(--cal-color-personal-border, #7c3aed);
+}
+
+.calendar-event--lane {
+    font-size: 0.65rem;
+    padding: 4px 5px;
+}
+
+.calendar-event-edit {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    z-index: 3;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.event-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.event-modal-header h3 {
+    margin: 0;
+    flex: 1;
+}
+
+.event-modal-edit-btn {
+    border: 1px solid var(--campus-border, #e2e8f0);
+    background: #fff;
+    border-radius: 8px;
+    padding: 0.35rem 0.6rem;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.event-modal-edit-btn.active {
+    background: var(--campus-cta, #ffc107);
+}
+
+.event-modal-slot-actions {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .calendar-event.booking {
@@ -205,10 +261,11 @@
     border-radius: 2px;
 }
 
-.legend-lesson i { background: var(--vy-blue); }
-.legend-booking i { background: #10B981; }
-.legend-slot i { background: #FFC107; }
-.legend-university i { background: #0050B3; }
+.legend-lesson i { background: var(--cal-color-lesson-border, var(--vy-blue)); }
+.legend-booking i { background: var(--cal-color-slot-border, #10B981); }
+.legend-slot i { background: var(--cal-color-slot-border, #FFC107); }
+.legend-university i { background: var(--cal-color-university-border, #0050B3); }
+.legend-personal i { background: var(--cal-color-personal-border, #7c3aed); }
 
 .appointment-days {
     display: flex;

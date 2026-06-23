@@ -6,12 +6,13 @@
     <meta name="theme-color" content="#0039A6">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="ВятГУ">
+    <meta name="apple-mobile-web-app-title" content="колледж ВятГУ">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-    <title>Личный кабинет ВятГУ</title>
+    <title>Личный кабинет колледжа ВятГУ</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='campus-tokens.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vyatsu-brand.css') }}">
@@ -24,7 +25,7 @@
     {% set ep = request.endpoint %}
     <nav class="site-nav" aria-label="Основная навигация">
         <div class="nav-container nav-container--wide">
-            <div class="logo"><a href="/">ВятГУ</a></div>
+            <div class="logo"><a href="/">колледж ВятГУ</a></div>
             <button type="button" class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Меню">
                 <span class="nav-toggle-bar"></span>
                 <span class="nav-toggle-bar"></span>
@@ -44,13 +45,14 @@
                             <a href="{{ url_for('teacher_dashboard') }}" class="{% if ep == 'teacher_dashboard' %}nav-link-active{% endif %}">Кабинет</a>
                             <a href="{{ url_for('teacher_slots') }}" class="{% if ep == 'teacher_slots' %}nav-link-active{% endif %}">Слоты</a>
                             <a href="{{ url_for('teacher_schedule') }}" class="{% if ep == 'teacher_schedule' %}nav-link-active{% endif %}">Расписание</a>
+                            <a href="{{ url_for('teacher_classroom_schedule') }}" class="{% if ep == 'teacher_classroom_schedule' %}nav-link-active{% endif %}">Кабинеты</a>
                         {% elif session.role == 'guard' %}
                             <a href="{{ url_for('guard_scan') }}" class="{% if ep == 'guard_scan' %}nav-link-active{% endif %}">Проверка QR</a>
                         {% elif session.role == 'admin' %}
                             <a href="{{ url_for('admin_panel', tab='students') }}" class="{% if ep == 'admin_panel' and request.args.get('tab', 'students') == 'students' %}nav-link-active{% endif %}">Студенты</a>
                             <a href="{{ url_for('admin_panel', tab='teachers') }}" class="{% if ep == 'admin_panel' and request.args.get('tab') == 'teachers' %}nav-link-active{% endif %}">Преподаватели</a>
                             <a href="{{ url_for('admin_panel', tab='schedule') }}" class="{% if ep == 'admin_panel' and request.args.get('tab') == 'schedule' %}nav-link-active{% endif %}">Расписание</a>
-                            <a href="{{ url_for('admin_panel', tab='help') }}" class="{% if ep == 'admin_panel' and request.args.get('tab') == 'help' %}nav-link-active{% endif %}">Справка VK</a>
+                            <a href="{{ url_for('admin_panel', tab='guards') }}" class="{% if ep == 'admin_panel' and request.args.get('tab') == 'guards' %}nav-link-active{% endif %}">Охрана</a>
                         {% endif %}
                     {% else %}
                         <a href="{{ url_for('login') }}" class="{% if ep == 'login' %}nav-link-active{% endif %}">Вход</a>
@@ -61,12 +63,33 @@
                 </div>
                 {% if session.user_id %}
                     <div class="nav-actions">
+                        <div class="nav-notify-menu">
+                            <button type="button" class="nav-notify-btn" id="navNotifyToggle" aria-expanded="false" aria-haspopup="true" title="Уведомления">
+                                🔔
+                                <span class="nav-notify-badge" id="navNotifyBadge" hidden>0</span>
+                            </button>
+                            <div class="nav-notify-dropdown" id="navNotifyDropdown" hidden>
+                                <div class="nav-notify-header">
+                                    <strong>Уведомления</strong>
+                                    <button type="button" class="btn btn-ghost btn-sm" id="navNotifyReadAll">Прочитать все</button>
+                                </div>
+                                <div id="navNotifyList" class="nav-notify-list"></div>
+                                <button type="button" class="btn btn-outline btn-sm btn-block" id="navNotifyPushBtn">Включить push</button>
+                            </div>
+                        </div>
                         <div class="nav-user-menu">
                             <button type="button" class="nav-user-avatar" id="navUserToggle" aria-expanded="false" aria-haspopup="true" title="{{ session.user_name }}">
                                 {{ (session.user_name or '?')[:1]|upper }}
                             </button>
                             <div class="nav-user-dropdown" id="navUserDropdown" hidden>
                                 <p class="nav-user-dropdown-name">{{ session.user_name }}</p>
+                                <div class="theme-settings-panel" id="themeSettingsPanel">
+                                    <p class="theme-settings-label">Цвета календаря</p>
+                                    <label class="theme-color-row">Колледж <input type="color" id="themeColorLesson" value="#0039A6"></label>
+                                    <label class="theme-color-row">Университет <input type="color" id="themeColorUniversity" value="#0050B3"></label>
+                                    <label class="theme-color-row">Слоты <input type="color" id="themeColorSlot" value="#FFC107"></label>
+                                    <label class="theme-color-row">Заметки <input type="color" id="themeColorPersonal" value="#7c3aed"></label>
+                                </div>
                                 <a href="{{ url_for('logout') }}" class="nav-logout-btn">Выйти</a>
                             </div>
                         </div>
@@ -89,9 +112,15 @@
         {% endwith %}
         {% block content %}{% endblock %}
     </div>
-    <footer><p>© 2026 ВятГУ | Личный кабинет</p></footer>
+    <footer><p>© 2026 колледж ВятГУ | Личный кабинет</p></footer>
+    <button type="button" class="theme-toggle-fab" id="themeToggleFab" aria-label="Переключить тему" title="Тема">☀️</button>
     <script>if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }</script>
+    <script src="{{ url_for('static', filename='js/csrf.js') }}"></script>
     <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+    {% if session.user_id %}
+    <script src="{{ url_for('static', filename='js/push-notifications.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+    {% endif %}
     <script>
         (function () {
             var toggle = document.getElementById('navToggle');
@@ -139,6 +168,7 @@
             });
         }
     </script>
+    <script src="{{ url_for('static', filename='js/theme-settings.js') }}" defer></script>
     <script src="{{ url_for('static', filename='campus-motion.js') }}" defer></script>
 </body>
 </html>

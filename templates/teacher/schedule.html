@@ -2,18 +2,30 @@
 {% block body_class %}layout-wide teacher-dashboard-page{% endblock %}
 {% block content %}
 <h2>Расписание</h2>
-<p>Кликните по пустой ячейке, чтобы создать окно для записи студентов.</p>
+<p>Кликните по пустой ячейке, чтобы создать окно приёма или личную заметку.</p>
 {% if vyatsu_status and vyatsu_status != 'ok' %}
-<p class="hint">Расписание ВятГУ: {{ vyatsu_status }} (проверьте ФИО в профиле)</p>
+<p class="hint">Расписание университета: {{ vyatsu_status }} (проверьте ФИО в профиле)</p>
 {% endif %}
 {% if show_calendar_legend %}
 <div class="calendar-legend">
     <span class="legend-lesson"><i></i> Колледж</span>
-    <span class="legend-university"><i></i> ВятГУ</span>
+    <span class="legend-university"><i></i> Университет</span>
     <span class="legend-slot"><i></i> Приём студентов</span>
+    <span class="legend-personal"><i></i> Личная заметка</span>
 </div>
 {% endif %}
 {% include 'partials/calendar_shell.html' %}
+
+<div id="create-chooser-modal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Что создать?</h3>
+        <div class="modal-actions" style="flex-direction:column; gap:0.5rem;">
+            <button type="button" id="chooser-slot" class="btn btn-primary btn-block">Временной слот</button>
+            <button type="button" id="chooser-note" class="btn btn-outline btn-block">Личная заметка</button>
+            <button type="button" id="chooser-cancel" class="btn btn-ghost btn-block">Отмена</button>
+        </div>
+    </div>
+</div>
 
 <div id="slot-modal" class="modal-overlay">
     <div class="modal-box">
@@ -63,6 +75,14 @@
                 <label>Макс. студентов</label>
                 <input type="number" name="max_students" min="1" value="1" required>
             </div>
+            <div class="form-group">
+                <label><input type="checkbox" name="enable_queue" id="slot_enable_queue"> Очередь на паре</label>
+                <p class="hint">Студенты могут встать в очередь, пока их группа на паре у вас.</p>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" name="enable_submission" id="slot_enable_submission"> Сдача работ</label>
+                <p class="hint">Студенты смогут прикрепить файл к этому слоту.</p>
+            </div>
             <div class="modal-actions">
                 <button type="submit" class="btn btn-primary">Готово</button>
                 <button type="button" id="slot-cancel" class="btn btn-ghost">Отмена</button>
@@ -71,20 +91,76 @@
     </div>
 </div>
 
+<div id="personal-modal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Личная заметка</h3>
+        <form id="personal-form">
+            <input type="hidden" name="event_date" id="personal_date">
+            <div class="form-group">
+                <label>Начало</label>
+                <input type="time" name="time_start" id="personal_start" required>
+            </div>
+            <div class="form-group">
+                <label>Конец</label>
+                <input type="time" name="time_end" id="personal_end" required>
+            </div>
+            <div class="form-group">
+                <label>Заголовок</label>
+                <input type="text" name="title" id="personal_title" required placeholder="Напоминание">
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+                <button type="button" id="personal-cancel" class="btn btn-ghost">Отмена</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 window.CALENDAR_CLICKABLE = true;
-window.openSlotModal = function(dateStr, hour, min) {
-    document.getElementById('slot_date').value = dateStr;
-    var ts = document.getElementById('time_start');
-    var te = document.getElementById('time_end');
-    ts.value = (hour < 10 ? '0' : '') + hour + ':' + (min < 10 ? '0' : '') + min;
+var pendingCell = { dateStr: '', hour: 0, min: 0 };
+
+function fillTimeFields(dateStr, hour, min) {
+    var ts = (hour < 10 ? '0' : '') + hour + ':' + (min < 10 ? '0' : '') + min;
     var endH = Math.min(21, hour + 1);
-    te.value = (endH < 10 ? '0' : '') + endH + ':' + (min < 10 ? '0' : '') + min;
+    var te = (endH < 10 ? '0' : '') + endH + ':' + (min < 10 ? '0' : '') + min;
+    document.getElementById('slot_date').value = dateStr;
+    document.getElementById('time_start').value = ts;
+    document.getElementById('time_end').value = te;
+    document.getElementById('personal_date').value = dateStr;
+    document.getElementById('personal_start').value = ts;
+    document.getElementById('personal_end').value = te;
+}
+
+window.openCalendarCellClick = function(dateStr, hour, min) {
+    pendingCell = { dateStr: dateStr, hour: hour, min: min };
+    fillTimeFields(dateStr, hour, min);
+    document.getElementById('create-chooser-modal').classList.add('open');
+};
+
+window.openSlotModal = function(dateStr, hour, min) {
+    fillTimeFields(dateStr, hour, min);
     document.getElementById('slot-modal').classList.add('open');
+};
+
+document.getElementById('chooser-cancel').onclick = function() {
+    document.getElementById('create-chooser-modal').classList.remove('open');
+};
+document.getElementById('chooser-slot').onclick = function() {
+    document.getElementById('create-chooser-modal').classList.remove('open');
+    document.getElementById('slot-modal').classList.add('open');
+};
+document.getElementById('chooser-note').onclick = function() {
+    document.getElementById('create-chooser-modal').classList.remove('open');
+    document.getElementById('personal-modal').classList.add('open');
 };
 document.getElementById('slot-cancel').onclick = function() {
     document.getElementById('slot-modal').classList.remove('open');
 };
+document.getElementById('personal-cancel').onclick = function() {
+    document.getElementById('personal-modal').classList.remove('open');
+};
+
 document.getElementById('slot-form').onsubmit = async function(e) {
     e.preventDefault();
     var fd = new FormData(e.target);
@@ -105,6 +181,8 @@ document.getElementById('slot-form').onsubmit = async function(e) {
         audience_type: audience,
         max_students: fd.get('max_students'),
         group_names: groupNames,
+        enable_queue: document.getElementById('slot_enable_queue').checked,
+        enable_submission: document.getElementById('slot_enable_submission').checked,
         confirm_overlap: !!window.slotConfirmOverlap,
     };
     async function postSlot(payload) {
@@ -124,6 +202,24 @@ document.getElementById('slot-form').onsubmit = async function(e) {
         if (data.ok) location.reload();
         else alert(data.error || 'Ошибка');
     } else alert(data.error || 'Ошибка');
+};
+
+document.getElementById('personal-form').onsubmit = async function(e) {
+    e.preventDefault();
+    var fd = new FormData(e.target);
+    var r = await fetch('{{ url_for("api_teacher_personal_events") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            event_date: fd.get('event_date'),
+            time_start: fd.get('time_start'),
+            time_end: fd.get('time_end'),
+            title: fd.get('title'),
+        }),
+    });
+    var data = await r.json();
+    if (data.ok) location.reload();
+    else alert(data.error || 'Ошибка');
 };
 </script>
 {% include 'partials/event_modal.html' %}

@@ -47,8 +47,12 @@
                         <td>{{ b.group_name or '—' }}</td>
                         <td><span class="status-badge {{ b.status }}">{{ b.status }}</span></td>
                         <td>
-                            {% if b.status != 'rejected' %}
-                            <button type="button" class="btn btn-danger btn-sm" onclick="rejectBooking({{ b.id }})">Отказать</button>
+                            {% if b.status in ('pending', 'confirmed') %}
+                            <button type="button" class="btn btn-danger btn-sm" onclick="patchBooking({{ b.id }}, 'rejected')">Отказать</button>
+                            {% elif b.status == 'rejected' %}
+                            <button type="button" class="btn btn-outline btn-sm" onclick="patchBooking({{ b.id }}, 'pending')">Вернуть</button>
+                            {% elif b.status == 'cancelled' %}
+                            <span class="hint">Отменил сам</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -66,12 +70,17 @@
     </section>
 </div>
 <script>
-async function rejectBooking(id) {
-    await fetch('/api/teacher/bookings/' + id, {
+async function patchBooking(id, status) {
+    var r = await fetch('/api/teacher/bookings/' + id, {
         method: 'PATCH',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({status: 'rejected'}),
+        body: JSON.stringify({status: status}),
     });
+    var data = await r.json().catch(function () { return {}; });
+    if (!r.ok) {
+        alert(data.error || 'Ошибка');
+        return;
+    }
     location.reload();
 }
 </script>

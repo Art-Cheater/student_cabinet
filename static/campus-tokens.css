@@ -84,9 +84,137 @@ h1, h2, h3, h4, .heading-brand {
     color: var(--campus-cta);
 }
 
+html {
+    transition: background-color 300ms ease, color 300ms ease;
+}
+
 body {
     font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--campus-bg);
     color: var(--campus-text);
     line-height: 1.5;
+}
+
+[data-theme="dark"] {
+    --campus-bg: #0f172a;
+    --campus-surface: #1e293b;
+    --campus-text: #e2e8f0;
+    --campus-text-muted: #94a3b8;
+    --campus-border: #334155;
+    --campus-border-light: #1e293b;
+    --campus-blue-deep: #e2e8f0;
+    --campus-table-head: #1e293b;
+    --vy-table-head: #1e293b;
+    --shadow-clay: 0 10px 25px -5px rgba(0, 0, 0, 0.35);
+    --shadow-clay-hover: 0 16px 32px -8px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] .heading-brand {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .hint,
+[data-theme="dark"] .welcome-sub {
+    color: var(--campus-text-muted);
+}
+
+[data-theme="dark"] .student-cabinet-info p,
+[data-theme="dark"] .teacher-profile-card p,
+[data-theme="dark"] .guard-pass-card p {
+    color: var(--campus-text);
+}
+
+[data-theme="dark"] .student-cabinet-card,
+[data-theme="dark"] .teacher-profile-card,
+[data-theme="dark"] .bento-cell,
+[data-theme="dark"] .modal-box,
+[data-theme="dark"] .admin-note,
+[data-theme="dark"] .guard-pass-panel {
+    background: var(--campus-surface);
+    color: var(--campus-text);
+    border-color: var(--campus-border);
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+    background: #0f172a;
+    color: var(--campus-text);
+    border-color: var(--campus-border);
+}
+
+[data-theme="dark"] .nav-user-dropdown,
+[data-theme="dark"] .calendar-event-edit,
+[data-theme="dark"] .event-modal-edit-btn {
+    background: var(--campus-surface);
+    color: var(--campus-text);
+}
+
+[data-theme="dark"] .nav-user-dropdown-name,
+[data-theme="dark"] .theme-settings-panel,
+[data-theme="dark"] .theme-settings-label,
+[data-theme="dark"] .theme-color-row {
+    color: var(--campus-text);
+}
+
+.theme-settings-panel {
+    padding: 0.5rem 0;
+    margin: 0.5rem 0;
+    border-top: 1px solid var(--campus-border);
+    border-bottom: 1px solid var(--campus-border);
+    font-size: 0.85rem;
+    color: var(--campus-text);
+}
+
+.nav-user-dropdown-name {
+    color: var(--campus-text);
+}
+
+.theme-settings-label {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.theme-color-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    color: var(--campus-text);
+}
+
+.theme-color-row input[type="color"] {
+    width: 2.5rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 1px solid var(--campus-border);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.theme-toggle-fab {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    bottom: auto;
+    z-index: 1300;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    border: 1px solid var(--campus-border);
+    background: var(--campus-surface);
+    box-shadow: var(--shadow-clay);
+    font-size: 1.35rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.theme-toggle-fab:hover {
+    box-shadow: var(--shadow-clay-hover);
 }

@@ -10,10 +10,10 @@ def revoke_active_tokens(conn, user_id):
     ''', (user_id,))
 
 
-def issue_token(conn, user_id, subject_type, ttl_minutes=5):
+def issue_token(conn, user_id, subject_type, ttl_seconds=60):
     revoke_active_tokens(conn, user_id)
     token = str(uuid.uuid4())
-    expires = datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes)
+    expires = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
     conn.execute('''
         INSERT INTO qr_access_tokens (token, user_id, subject_type, expires_at)
         VALUES (%s, %s, %s, %s)

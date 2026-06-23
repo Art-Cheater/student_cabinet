@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: StudentCabinet
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -12,11 +12,10 @@ services:
     build: .
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/StudentCabinet
-      FLASK_SECRET_KEY: change-me-on-server
-      ADMIN_EMAIL: admin@vyatsu.ru
-      ADMIN_PASSWORD: admin123
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/StudentCabinet
     depends_on:
       - db
     restart: unless-stopped

@@ -42,9 +42,19 @@ body.guard-scan-page .container {
     padding-bottom: 2rem;
 }
 
-.guard-scan-page {
+.guard-scan-page,
+.guard-access-page {
     max-width: 480px;
     margin: 0 auto;
+}
+
+.guard-viewfinder {
+    min-height: min(55vw, 280px);
+}
+
+.guard-viewfinder .guard-qr-reader video {
+    border-radius: 0;
+    object-fit: cover;
 }
 
 .guard-scan-hint--small {
@@ -151,6 +161,20 @@ body.guard-scan-page .container {
     border-radius: 12px;
     object-fit: cover;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.guard-pass-photo-placeholder {
+    width: 140px;
+    height: 140px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: var(--campus-gradient);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
 }
 
 .guard-pass-card {
@@ -376,7 +400,8 @@ button[type="submit"],
         max-height: none;
     }
 
-    .student-cabinet-grid {
+    .student-cabinet-grid,
+    .student-cabinet-grid--triple {
         grid-template-columns: 1fr;
         text-align: center;
     }

@@ -20,7 +20,7 @@ DATABASE_URL = os.getenv(
     'DATABASE_URL',
     'postgresql://postgres:1234@localhost:5432/StudentCabinet',
 )
-ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'admin@vyatsu.ru')
+ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'admin@vyatsu.ru').strip().lower()
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
 
 
@@ -54,7 +54,13 @@ def seed_admin(conn):
     from db.queries.users import get_user_by_email, create_admin_user
 
     if get_user_by_email(conn, ADMIN_EMAIL):
-        print(f'Admin {ADMIN_EMAIL} already exists')
+        pwd_hash = bcrypt.hashpw(ADMIN_PASSWORD.encode(), bcrypt.gensalt()).decode()
+        conn.execute(
+            'UPDATE users SET password_hash = %s WHERE LOWER(email) = LOWER(%s)',
+            (pwd_hash, ADMIN_EMAIL),
+        )
+        conn.commit()
+        print(f'Admin {ADMIN_EMAIL} already exists — password synced from ADMIN_PASSWORD')
         return
     pwd_hash = bcrypt.hashpw(ADMIN_PASSWORD.encode(), bcrypt.gensalt()).decode()
     create_admin_user(conn, ADMIN_EMAIL, pwd_hash, 'Админ', 'Системный', None)

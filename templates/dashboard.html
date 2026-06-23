@@ -1,69 +1,93 @@
 {% extends "base.html" %}
-{% block body_class %}student-dashboard-page{% endblock %}
+{% block body_class %}student-dashboard-page pass-page{% endblock %}
 {% block content %}
-<div class="dashboard-welcome reveal-on-scroll">
-    <h1 class="heading-brand">Кабинет студента</h1>
-    <p class="welcome-sub">{{ fio or session.user_name }}</p>
-</div>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/access-premium.css') }}">
 
-{% if not card %}
-<div class="admin-note">
-    <h3>Студенческий билет не оформлен</h3>
-    <p>Обратитесь к администратору для создания студбилета.</p>
-</div>
-{% else %}
-<div class="student-cabinet-card">
-    <div class="student-cabinet-grid">
-        <div class="student-cabinet-info">
-            <h2>Цифровой студенческий</h2>
-            <p><strong>ФИО:</strong> {{ fio }}</p>
-            <p><strong>Группа:</strong> {{ profile.group_name }}</p>
-            <p><strong>ID студента:</strong> {{ profile.student_id }}</p>
-            <p><strong>Курс:</strong> {{ card.course_number }}</p>
-            <p><strong>Форма обучения:</strong> {{ card.study_form }}</p>
-            <p><strong>Дата выдачи:</strong> {{ card.issue_date }}</p>
-            <p><strong>Номер студбилета:</strong> {{ masked_number }}</p>
+<div class="access-page">
+    <div class="access-page-header">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6"/>
+        </svg>
+        <h1>Мой пропуск</h1>
+    </div>
+
+    {% if not card %}
+    <div class="access-card admin-note">
+        <h3>Студенческий билет не оформлен</h3>
+        <p class="hint">Обратитесь к администратору для создания студбилета.</p>
+    </div>
+    {% else %}
+    <div class="access-card">
+        <div class="access-card-grid">
+            <div class="access-avatar">
+                {% if card.face_photo_path %}
+                <img src="{{ url_for('student_card_face_photo', user_id=card.user_id) }}" alt="">
+                {% else %}
+                {{ (fio or session.user_name or '?')[:1]|upper }}
+                {% endif %}
+            </div>
+            <div>
+                <p class="access-section-title">Персональные данные</p>
+                <p class="access-fio">{{ fio }}</p>
+                <div class="access-data-row">
+                    <span>Номер пропуска</span>
+                    <span>{{ card.pass_number or masked_number or '—' }}</span>
+                </div>
+                <div class="access-data-row">
+                    <span>Группа</span>
+                    <span>{{ profile.group_name or '—' }}</span>
+                </div>
+                <div class="access-data-row">
+                    <span>Срок действия</span>
+                    <span>{% if card.issue_date %}до {{ card.issue_date }}{% else %}—{% endif %}</span>
+                </div>
+                <div class="access-data-row">
+                    <span>Фото</span>
+                    <span>
+                        {% if card.face_photo_path %}
+                        <img class="access-thumb" src="{{ url_for('student_card_face_photo', user_id=card.user_id) }}" alt="">
+                        {% else %}не загружено{% endif %}
+                    </span>
+                </div>
+            </div>
         </div>
-        <div class="student-cabinet-qr">
-            <img id="studentQrImg" src="{{ qr_url }}" alt="QR студенческого билета" width="260" height="260">
-            <p class="hint">Покажите охраннику. Код обновляется автоматически.</p>
+
+        <button type="button" id="accessGenerateQrBtn" class="access-btn-primary">Сгенерировать QR-код</button>
+
+        <div id="accessQrBlock" class="access-qr-block">
+            <div class="access-qr-wrap">
+                <img id="accessQrImg" alt="QR-код пропуска" width="220" height="220">
+            </div>
+            <div class="access-timer-wrap">
+                <svg class="access-timer-ring" viewBox="0 0 120 120" aria-hidden="true">
+                    <circle class="ring-bg" cx="60" cy="60" r="56"></circle>
+                    <circle id="accessTimerRingProgress" class="ring-progress" cx="60" cy="60" r="56"></circle>
+                </svg>
+                <p id="accessQrTimer" class="access-timer">01:00</p>
+            </div>
+            <p class="access-qr-hint">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                Действителен для сканирования охранником
+            </p>
+            <span class="access-qr-badge">В QR нет ФИО — только защищённый токен</span>
         </div>
     </div>
 
-    <div class="student-photo-block">
-        <h3>Фото для студбилета</h3>
-        <div class="student-photo-preview">
-            {% if card.face_photo_path %}
-            <img src="{{ url_for('student_card_face_photo', user_id=card.user_id) }}" alt="Ваше фото">
-            {% else %}
-            <div class="student-photo-placeholder">Фото не загружено</div>
-            {% endif %}
-        </div>
+    <div class="access-card access-upload-block">
+        <p class="access-section-title">Фото для пропуска</p>
         <form method="POST" enctype="multipart/form-data" class="student-photo-form">
+            {% include 'partials/csrf_input.html' %}
             <input type="hidden" name="action" value="upload_photo">
             <div class="form-group">
-                <label>Загрузить или заменить фото</label>
                 <input type="file" name="face_photo" accept="image/*" required>
-                <p class="hint">Форматы: PNG, JPG, JPEG, GIF, WEBP</p>
             </div>
-            <button type="submit" class="btn btn-primary">Сохранить фото</button>
+            <button type="submit" class="btn btn-outline">Сохранить фото</button>
         </form>
     </div>
+    {% endif %}
 </div>
-{% endif %}
-{% if card and qr_url %}
-<script>
-(function () {
-    function refreshQr() {
-        fetch('/api/my-qr-token').then(function (r) { return r.json(); }).then(function (d) {
-            if (d.ok && d.qr_url) {
-                var img = document.getElementById('studentQrImg');
-                if (img) img.src = d.qr_url;
-            }
-        }).catch(function () {});
-    }
-    setInterval(refreshQr, 4 * 60 * 1000);
-})();
-</script>
+
+{% if card %}
+<script src="{{ url_for('static', filename='js/pass-card.js') }}"></script>
 {% endif %}
 {% endblock %}

@@ -56,7 +56,76 @@
         if (t === 'office_slot') return ' slot';
         if (t === 'booking') return ' booking';
         if (t === 'university_lesson') return ' university';
+        if (t === 'personal') return ' personal';
         return ' lesson';
+    }
+
+    function eventRangeMinutes(ev) {
+        var start = parseEventStart(ev);
+        var end = parseEventStart(ev);
+        if (ev.end) {
+            var ep = ev.end.split('T');
+            if (ep.length >= 2) {
+                var et = ep[1].split(':');
+                end = new Date(
+                    parseInt(ep[0].split('-')[0], 10),
+                    parseInt(ep[0].split('-')[1], 10) - 1,
+                    parseInt(ep[0].split('-')[2], 10),
+                    parseInt(et[0], 10) || 0,
+                    parseInt(et[1], 10) || 0
+                );
+            }
+        }
+        var rangeStart = HOUR_START * 60;
+        var rangeEnd = HOUR_END * 60;
+        var sm = Math.max(minutesFromTime(start), rangeStart);
+        var em = Math.min(minutesFromTime(end), rangeEnd);
+        if (em <= sm) em = sm + 45;
+        return { ev: ev, sm: sm, em: em };
+    }
+
+    function assignOverlapLanes(ranges) {
+        var sorted = ranges.slice().sort(function (a, b) {
+            return a.sm - b.sm || (b.em - b.sm) - (a.em - a.sm);
+        });
+        var clusters = [];
+        sorted.forEach(function (item) {
+            var cluster = null;
+            for (var i = 0; i < clusters.length; i++) {
+                var c = clusters[i];
+                if (item.sm < c.maxEnd) {
+                    cluster = c;
+                    break;
+                }
+            }
+            if (!cluster) {
+                cluster = { items: [], maxEnd: 0, lanes: [] };
+                clusters.push(cluster);
+            }
+            cluster.items.push(item);
+            cluster.maxEnd = Math.max(cluster.maxEnd, item.em);
+        });
+        clusters.forEach(function (cluster) {
+            cluster.lanes = [];
+            cluster.items.forEach(function (item) {
+                var lane = 0;
+                for (; lane < cluster.lanes.length; lane++) {
+                    if (cluster.lanes[lane] <= item.sm) break;
+                }
+                if (lane === cluster.lanes.length) cluster.lanes.push(0);
+                cluster.lanes[lane] = item.em;
+                item.lane = lane;
+                item.laneCount = 0;
+            });
+            var maxLane = 0;
+            cluster.items.forEach(function (item) {
+                if (item.lane + 1 > maxLane) maxLane = item.lane + 1;
+            });
+            cluster.items.forEach(function (item) {
+                item.laneCount = maxLane;
+            });
+        });
+        return sorted;
     }
 
     function clickOverlapKind(dayStr, hour, min, events) {
@@ -109,36 +178,39 @@
         var rangeEnd = HOUR_END * 60;
         var totalPx = getHoursCount() * hourPx;
 
-        events.filter(function (ev) { return eventOnLocalDay(ev, dayStr); }).forEach(function (ev) {
-            var start = parseEventStart(ev);
-            var end = parseEventStart(ev);
-            if (ev.end) {
-                var ep = ev.end.split('T');
-                if (ep.length >= 2) {
-                    var et = ep[1].split(':');
-                    end = new Date(
-                        parseInt(ep[0].split('-')[0], 10),
-                        parseInt(ep[0].split('-')[1], 10) - 1,
-                        parseInt(ep[0].split('-')[2], 10),
-                        parseInt(et[0], 10) || 0,
-                        parseInt(et[1], 10) || 0
-                    );
-                }
-            }
-            var sm = Math.max(minutesFromTime(start), rangeStart);
-            var em = Math.min(minutesFromTime(end), rangeEnd);
-            if (em <= sm) em = sm + 45;
+        var dayEvents = events.filter(function (ev) { return eventOnLocalDay(ev, dayStr); });
+        var ranges = dayEvents.map(eventRangeMinutes);
+        assignOverlapLanes(ranges);
+        var userRole = document.body.dataset.userRole || '';
+        ranges.forEach(function (item) {
+            var ev = item.ev;
+            var sm = item.sm;
+            var em = item.em;
             var top = ((sm - rangeStart) / (rangeEnd - rangeStart)) * totalPx;
             var height = Math.max(((em - sm) / (rangeEnd - rangeStart)) * totalPx, 24);
+            var laneCount = item.laneCount || 1;
+            var lane = item.lane || 0;
+            var isSlot = ev.type === 'office_slot';
+            var widthPct = (100 / laneCount);
+            if (isSlot && laneCount > 1) widthPct = Math.min(widthPct, 38);
+            var leftPct = lane * (100 / laneCount);
+            if (isSlot && laneCount > 1) {
+                leftPct = Math.max(0, 100 - widthPct - 2);
+            }
             var div = document.createElement('div');
+            var noteKey = ev.event_key || ev.id;
             div.className = 'calendar-event' + eventTypeClass(ev);
+            if (laneCount > 1) div.classList.add('calendar-event--lane');
+            div.dataset.eventKey = noteKey || '';
             div.style.top = top + 'px';
             div.style.height = height + 'px';
+            div.style.left = 'calc(' + leftPct + '% + 2px)';
+            div.style.width = 'calc(' + widthPct + '% - 4px)';
+            div.style.right = 'auto';
             var room = ev.classroom || '';
             var bLink = ev.building_number
                 ? '<a href="/map?building=' + ev.building_number + '">' + room + '</a>'
                 : (room ? room : '');
-            var noteKey = ev.event_key || ev.id;
             var notesMap = window.calendarNotesMap || {};
             var noteText = notesMap[noteKey] || '';
             var noteHtml = '';
@@ -150,6 +222,7 @@
                         noteText.replace(/"/g, '&quot;').replace(/</g, '&lt;') + '">📝 заметка</div>';
                 }
             }
+            var editBtn = '';
             div.innerHTML =
                 '<div>' + (ev.start || '').slice(11, 16) + ' – ' + (ev.end || '').slice(11, 16) + '</div>' +
                 (bLink ? '<div>' + bLink + '</div>' : '') +
@@ -158,6 +231,7 @@
                 noteHtml;
             if (ev.slot_id) div.dataset.slotId = String(ev.slot_id);
             div.addEventListener('click', function (e) {
+                if (e.target.closest('.calendar-event-edit')) return;
                 e.stopPropagation();
                 if (window.EventModal && window.EventModal.open) {
                     window.EventModal.open(ev);
@@ -221,7 +295,11 @@
                     }
                     window.slotConfirmOverlap = true;
                 }
-                if (window.openSlotModal) window.openSlotModal(dayStr, hour, min);
+                if (window.openCalendarCellClick) {
+                    window.openCalendarCellClick(dayStr, hour, min);
+                } else if (window.openSlotModal) {
+                    window.openSlotModal(dayStr, hour, min);
+                }
             });
         }
         col.appendChild(body);

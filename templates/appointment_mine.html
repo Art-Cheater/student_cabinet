@@ -28,6 +28,7 @@
                     {% if b.status in ('pending', 'confirmed') %}
                     <form method="POST" action="{{ url_for('appointment_cancel', booking_id=b.booking_id) }}"
                           onsubmit="return confirm('Отменить запись?');" style="display:inline;">
+                        {% include 'partials/csrf_input.html' %}
                         <button type="submit" class="btn btn-danger btn-sm">Отменить</button>
                     </form>
                     {% else %}—{% endif %}

@@ -3,12 +3,18 @@
     var startBtn = document.getElementById('startCameraBtn');
     var stopBtn = document.getElementById('stopCameraBtn');
     var resultEl = document.getElementById('guardPassResult');
+    var loadingEl = document.getElementById('guardLoading');
     var scanner = null;
     var scanningLock = false;
     var cameraOn = false;
+    var lastResultData = null;
 
     function setStatus(text) {
         if (statusEl) statusEl.textContent = text;
+    }
+
+    function setLoading(on) {
+        if (loadingEl) loadingEl.classList.toggle('is-active', !!on);
     }
 
     function escapeHtml(s) {
@@ -57,7 +63,16 @@
 
     function row(label, value) {
         if (value == null || value === '') return '';
-        return '<p><strong>' + escapeHtml(label) + ':</strong> ' + escapeHtml(value) + '</p>';
+        return '<div class="access-data-row"><span>' + escapeHtml(label) + '</span><span>' +
+            escapeHtml(value) + '</span></div>';
+    }
+
+    function hidePassResult() {
+        lastResultData = null;
+        if (resultEl) {
+            resultEl.hidden = true;
+            resultEl.innerHTML = '';
+        }
     }
 
     function showPassResult(data, isError) {
@@ -65,56 +80,61 @@
         resultEl.hidden = false;
 
         if (isError) {
-            resultEl.className = 'guard-pass-panel guard-pass-panel--error';
+            resultEl.className = 'guard-result-card is-error';
             resultEl.innerHTML =
-                '<h3 class="guard-pass-title">Отказ</h3>' +
                 '<p class="guard-pass-error">' + escapeHtml(data.error || 'Ошибка проверки') + '</p>';
             if (navigator.vibrate) navigator.vibrate(200);
+            return;
+        }
+
+        lastResultData = data;
+        var isStudent = data.subject_type === 'student';
+        var title = isStudent ? 'Студенческий билет' : 'Пропуск преподавателя';
+        var html = '<div class="guard-result-card is-ok">';
+        html += '<div class="guard-status-ok">';
+        html += '<div class="guard-status-icon">';
+        html += '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">';
+        html += '<path d="M20 6L9 17l-5-5"/></svg></div>';
+        html += '<span class="guard-status-text">QR-код действителен / подтверждён</span></div>';
+        html += '<p class="access-section-title">Данные посетителя</p>';
+        html += '<div class="guard-pass-photo-wrap" style="text-align:center;margin-bottom:16px;">';
+        if (data.photo_url) {
+            html += '<img src="' + escapeHtml(data.photo_url) + '" alt="Фото" class="guard-pass-photo" ' +
+                'style="width:140px;height:140px;object-fit:cover;border-radius:12px;" ' +
+                'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">';
+        }
+        html += '<div class="guard-pass-photo-placeholder" style="' +
+            (data.photo_url ? 'display:none;' : '') +
+            'width:140px;height:140px;margin:0 auto;border-radius:50%;' +
+            'background:linear-gradient(135deg,var(--access-accent),var(--access-accent-dark));' +
+            'color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;">' +
+            escapeHtml(data.photo_initials || '?') + '</div></div>';
+        html += '<p class="access-fio" style="text-align:center;margin-bottom:12px;">' + escapeHtml(data.fio || '') + '</p>';
+        html += '<p style="text-align:center;font-weight:600;margin-bottom:8px;">' + escapeHtml(title) + '</p>';
+        if (isStudent) {
+            html += row('Группа', data.group);
+            html += row('Номер пропуска', data.pass_number || data.card_number_masked);
         } else {
-            var isStudent = data.subject_type === 'student';
-            var title = isStudent ? 'Студенческий билет' : 'Пропуск преподавателя';
-            var html = '<h3 class="guard-pass-title guard-pass-title--ok">' + escapeHtml(title) + '</h3>';
-            html += '<p class="guard-pass-badge">Допуск разрешён</p>';
-
-            if (data.photo_url) {
-                html += '<div class="guard-pass-photo-wrap">' +
-                    '<img src="' + escapeHtml(data.photo_url) + '" alt="Фото" class="guard-pass-photo" ' +
-                    'loading="eager" decoding="async" ' +
-                    'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\';">' +
-                    '<p class="hint guard-pass-photo-missing" style="display:none;">Фото не загружено</p>' +
-                    '</div>';
-            }
-
-            html += '<div class="guard-pass-card student-cabinet-card">';
-            html += '<p class="guard-pass-fio">' + escapeHtml(data.fio || '') + '</p>';
-            if (isStudent) {
-                html += row('Группа', data.group);
-                html += row('ID студента', data.student_id);
-                html += row('Курс', data.course_number);
-                html += row('Форма обучения', data.study_form);
-                html += row('Дата выдачи', data.issue_date);
-                html += row('Номер студбилета', data.card_number_masked);
-            } else {
-                html += row('Должность', data.position_title);
-                html += row('Подразделение', data.department);
-                html += row('№ удостоверения', data.pass_number);
-            }
-            html += '<p class="hint guard-pass-valid">Действует до: ' + escapeHtml(formatValidUntil(data.valid_until)) + '</p>';
-            html += '</div>';
-
-            resultEl.className = 'guard-pass-panel guard-pass-panel--ok';
-            resultEl.innerHTML = html;
-            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            html += row('№ пропуска', data.pass_number);
+            html += row('Должность', data.position_title);
         }
+        html += row('Действует до', formatValidUntil(data.valid_until));
+        html += '<p class="guard-privacy-badge">ФИО не содержится в QR-коде</p>';
+        html += '<button type="button" class="guard-confirm-btn" id="guardConfirmBtn">Подтвердить пропуск</button>';
+        html += '</div>';
 
+        resultEl.className = '';
+        resultEl.innerHTML = html;
+        var confirmBtn = document.getElementById('guardConfirmBtn');
+        if (confirmBtn) {
+            confirmBtn.onclick = function () {
+                hidePassResult();
+                setStatus('Готов к следующему сканированию');
+                scanningLock = false;
+            };
+        }
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    function hidePassResult() {
-        if (resultEl) {
-            resultEl.hidden = true;
-            resultEl.innerHTML = '';
-        }
     }
 
     async function verify(raw) {
@@ -124,6 +144,7 @@
             return;
         }
         setStatus('Проверка…');
+        setLoading(true);
         try {
             var r = await fetch('/api/guard/verify', {
                 method: 'POST',
@@ -134,8 +155,7 @@
             var data = await r.json();
             if (data.ok) {
                 showPassResult(data, false);
-                setStatus('Пропуск подтверждён — можно сканировать следующий');
-                scanningLock = false;
+                setStatus('Пропуск подтверждён — нажмите «Подтвердить пропуск»');
             } else {
                 showPassResult(data, true);
                 setStatus('Пропуск не принят');
@@ -145,6 +165,8 @@
             showPassResult({ error: 'Нет связи с сервером' }, true);
             setStatus('Ошибка сети');
             setTimeout(function () { scanningLock = false; }, 2000);
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -238,6 +260,7 @@
     var manualInput = document.getElementById('manualToken');
     if (manualBtn) {
         manualBtn.addEventListener('click', function () {
+            scanningLock = true;
             verify(manualInput ? manualInput.value : '');
         });
     }

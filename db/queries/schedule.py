@@ -171,3 +171,57 @@ def get_teacher_lesson_events(conn, schedule_teacher_id, date_from, date_to):
     ''', (schedule_teacher_id,)).fetchall()
     effective_from = get_latest_effective_from(conn)
     return expand_lessons_to_events(rows, effective_from, date_from, date_to)
+
+
+def get_classroom_events(conn, classroom_id, date_from, date_to, viewer_teacher_user_id=None):
+    """Lessons and office slots in a classroom for calendar view."""
+    from services.calendar_events import expand_lessons_to_events, slot_to_event
+
+    if not classroom_id:
+        return []
+    viewer_st_id = None
+    if viewer_teacher_user_id:
+        from db.queries.users import get_teacher_profile
+        prof = get_teacher_profile(conn, viewer_teacher_user_id)
+        if prof:
+            viewer_st_id = prof.get('schedule_teacher_id')
+    rows = conn.execute('''
+        SELECT l.id AS lesson_id, l.schedule_teacher_id, l.day_name, l.time_start, l.time_end,
+               l.subject, l.lesson_type,
+               st.name AS teacher, c.display_name AS classroom,
+               b.number AS building_number
+        FROM lessons l
+        LEFT JOIN schedule_teachers st ON st.id = l.schedule_teacher_id
+        LEFT JOIN classrooms c ON c.id = l.classroom_id
+        LEFT JOIN buildings b ON b.id = c.building_id
+        WHERE l.classroom_id = %s
+    ''', (classroom_id,)).fetchall()
+    effective_from = get_latest_effective_from(conn)
+    events = expand_lessons_to_events(rows, effective_from, date_from, date_to)
+    for ev in events:
+        if ev.get('type') == 'lesson':
+            st_id = ev.get('schedule_teacher_id')
+            ev['is_own_lesson'] = bool(
+                viewer_st_id and st_id and st_id == viewer_st_id,
+            )
+    slots = conn.execute('''
+        SELECT os.*, c.display_name AS classroom_display, b.number AS building_number,
+               (SELECT COUNT(*) FROM office_bookings ob
+                WHERE ob.slot_id = os.id AND ob.status IN ('pending', 'confirmed')) AS bookings_count
+        FROM office_slots os
+        LEFT JOIN classrooms c ON c.id = os.classroom_id
+        LEFT JOIN buildings b ON b.id = c.building_id
+        WHERE os.classroom_id = %s AND os.slot_date BETWEEN %s AND %s
+        ORDER BY os.slot_date, os.time_start
+    ''', (classroom_id, date_from, date_to)).fetchall()
+    events.extend([slot_to_event(s) for s in slots])
+    return events
+
+
+def list_classrooms(conn):
+    return conn.execute('''
+        SELECT c.id, c.display_name, b.number AS building_number
+        FROM classrooms c
+        LEFT JOIN buildings b ON b.id = c.building_id
+        ORDER BY b.number NULLS LAST, c.display_name
+    ''').fetchall()

@@ -8,10 +8,6 @@
 
 {% if parse_error %}
     <div class="hint" style="margin-bottom: 1rem;">{{ parse_error }}</div>
-    <div class="hint" style="margin-bottom: 1rem;">
-        Если показан кэш или лента без токена VK, даты могут не совпадать с группой —
-        задайте <code>VK_ACCESS_TOKEN</code> в .env для точных дат публикаций.
-    </div>
 {% endif %}
 
 {% if news %}
@@ -22,13 +18,17 @@
                     <img class="news-image" src="{{ item.image_url }}" alt="{{ item.title }}">
                 {% endif %}
                 <div class="news-content">
+                    {% if item.url %}
+                    <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="news-item-link">
+                    {% endif %}
                     <h3>{{ item.title }}</h3>
                     {% if item.date %}
                         <p class="hint">{{ item.date }}</p>
                     {% endif %}
                     <p>{{ item.summary }}</p>
                     {% if item.url %}
-                        <p><a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Читать в VK →</a></p>
+                    </a>
+                    <p><a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">Читать в VK →</a></p>
                     {% endif %}
                 </div>
             </div>
@@ -38,7 +38,7 @@
     <div class="alert">
         Новости пока недоступны.
         {% if not parse_error %}
-            <p class="hint">На сервере без токена ВК часто блокирует автоматические запросы — задайте переменную окружения <code>VK_ACCESS_TOKEN</code> в настройках хостинга.</p>
+            <p class="hint">Лента обновляется автоматически раз в час. Если новостей нет — запустите на сервере <code>python parsers/vk_news_sync.py</code>.</p>
         {% endif %}
     </div>
 {% endif %}

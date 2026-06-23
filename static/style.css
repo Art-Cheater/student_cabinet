@@ -350,6 +350,18 @@ a.btn {
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
+a.feature-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+a.feature-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(26, 42, 74, 0.12);
+}
+
 .feature h3 {
     margin-bottom: 0.5rem;
     color: #1a2a4a;

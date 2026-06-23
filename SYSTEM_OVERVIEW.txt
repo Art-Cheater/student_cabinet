@@ -27,7 +27,7 @@
      Отключена (сообщение «аккаунты создаёт админ»).
 
   /news  Новости
-     Лента из VK (или кэш). Нужен VK_ACCESS_TOKEN в .env.
+     Лента из кэша БД (парсинг vk.com/kollegevyatsu, без токена; до 10 постов).
 
   /map  Карта и контакты
      Список корпусов/общежитий, виджет Яндекс.Карт (без JS API), маршрут —
@@ -87,7 +87,7 @@
      Загрузка Excel (.xlsx), дата «действует с».
 
   Вкладка «Справка VK»
-     Инструкция по токену; кнопка синхронизации корпусов с vyatsu.ru.
+     Новости VK (парсинг группы); кнопка синхронизации корпусов с vyatsu.ru.
 
 --------------------------------------------------------------------------------
 МОДАЛЬНЫЕ ОКНА (не отдельные URL)
@@ -138,6 +138,7 @@ API (JSON, для фронта)
 
   database/init_db.py           — создание БД и админа
   parsers/vyatsu_campus.py      — корпуса/общежития → БД
+  parsers/vk_news_sync.py         — новости VK → кэш БД
   parsers/vk_schedule_sync.py   — расписание из VK
   schedule_parser/              — разбор Excel расписания
   data/campus_coords.json       — координаты для карты
@@ -148,7 +149,6 @@ API (JSON, для фронта)
 
   DATABASE_URL, FLASK_SECRET_KEY
   ADMIN_EMAIL, ADMIN_PASSWORD
-  VK_ACCESS_TOKEN
   GOOGLE_MAPS_API_KEY
   YANDEX_MAPS_API_KEY (опционально, геокод)
 

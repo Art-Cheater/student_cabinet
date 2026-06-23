@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Мокапы интерфейса</title>
+<style>
+body{
+    font-family: Arial, sans-serif;
+    background:#fff;
+    margin:20px;
+}
+
+h2{
+text-align:center;
+}
+
+.wrapper{
+display:flex;
+flex-wrap:wrap;
+gap:40px;
+justify-content:center;
+}
+
+.pc{
+width:900px;
+height:520px;
+border:3px solid #000;
+background:#fff;
+position:relative;
+}
+
+.header{
+height:60px;
+border-bottom:2px solid #000;
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:0 20px;
+}
+
+.logo{
+width:120px;
+height:25px;
+border:1px solid #000;
+}
+
+.menu{
+display:flex;
+gap:10px;
+}
+
+.menu div{
+width:90px;
+height:25px;
+border:1px solid #000;
+}
+
+.sidebar{
+width:220px;
+height:458px;
+border-right:2px solid #000;
+position:absolute;
+top:61px;
+left:0;
+}
+
+.sidebar div{
+height:40px;
+margin:10px;
+border:1px solid #000;
+}
+
+.content{
+margin-left:240px;
+padding:20px;
+}
+
+.block{
+border:1px solid #000;
+height:120px;
+margin-bottom:20px;
+}
+
+.table{
+border:1px solid #000;
+height:220px;
+}
+
+.phone{
+width:320px;
+height:640px;
+border:3px solid #000;
+border-radius:25px;
+background:#fff;
+padding:15px;
+}
+
+.top{
+height:50px;
+border-bottom:1px solid #000;
+margin-bottom:15px;
+}
+
+.card{
+border:1px solid #000;
+height:90px;
+margin-bottom:15px;
+}
+
+.qr{
+width:180px;
+height:180px;
+border:3px solid #000;
+margin:20px auto;
+}
+
+.button{
+border:1px solid #000;
+height:40px;
+margin-top:15px;
+} </style>
+
+</head>
+<body>
+
+<h2>Мокап 1 — ПК. Главная страница</h2>
+
+<div class="pc">
+    <div class="header">
+        <div class="logo"></div>
+        <div class="menu">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+    </div>
+
+```
+<div class="sidebar">
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+</div>
+
+<div class="content">
+    <div class="block"></div>
+    <div class="block"></div>
+    <div class="table"></div>
+</div>
+```
+
+</div>
+
+<br><br>
+
+<h2>Мокап 2 — ПК. Расписание и запись к преподавателю</h2>
+
+<div class="pc">
+    <div class="header">
+        <div class="logo"></div>
+        <div class="menu">
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+    </div>
+
+```
+<div class="content" style="margin-left:20px;">
+    <div class="table"></div>
+    <br>
+    <div class="block"></div>
+</div>
+```
+
+</div>
+
+<br><br>
+
+<h2>Мокап 3 — Мобильное приложение. Главный экран</h2>
+
+<div class="phone">
+    <div class="top"></div>
+    <div class="card"></div>
+    <div class="card"></div>
+    <div class="card"></div>
+    <div class="button"></div>
+</div>
+
+<br><br>
+
+<h2>Мокап 4 — Мобильное приложение. Электронный пропуск</h2>
+
+<div class="phone">
+    <div class="top"></div>
+    <div class="card" style="height:70px;"></div>
+
+```
+<div class="qr"></div>
+
+<div class="button"></div>
+<div class="button"></div>
+```
+
+</div>
+
+</body>
+</html>

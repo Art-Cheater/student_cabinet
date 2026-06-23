@@ -1,51 +1,81 @@
 {% extends "base.html" %}
-{% block body_class %}layout-wide teacher-dashboard-page{% endblock %}
+{% block body_class %}layout-wide teacher-dashboard-page pass-page{% endblock %}
 {% block content %}
-<div class="dashboard-welcome teacher-dashboard-header">
-    <div>
-        <h1>С возвращением, {{ session.user_name }}!</h1>
-        <p class="welcome-sub">Кабинет преподавателя</p>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/access-premium.css') }}">
+
+<div class="access-page">
+    <div class="access-page-header">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6"/>
+        </svg>
+        <h1>Мой пропуск</h1>
     </div>
-    <a href="{{ url_for('teacher_schedule') }}" class="btn btn-primary">Открыть расписание</a>
+
+    {% if profile %}
+    <div class="access-card">
+        <div class="access-card-grid">
+            <div class="access-avatar">{{ (profile|fio)[:1]|upper }}</div>
+            <div>
+                <p class="access-section-title">Персональные данные</p>
+                <p class="access-fio">{{ profile|fio }}</p>
+                <div class="access-data-row">
+                    <span>№ пропуска</span>
+                    <span>
+                        <form method="POST" class="access-pass-form">
+                            {% include 'partials/csrf_input.html' %}
+                            <input type="hidden" name="action" value="update_pass_number">
+                            <input type="text" name="pass_number" value="{{ profile.pass_number or '' }}"
+                                   placeholder="Номер пропуска" maxlength="64" aria-label="Номер пропуска">
+                            <button type="submit" class="btn btn-outline btn-sm" style="margin-top:8px;">Сохранить</button>
+                        </form>
+                    </span>
+                </div>
+                <div class="access-data-row">
+                    <span>Должность</span>
+                    <span>{{ profile.position_title or '—' }}</span>
+                </div>
+                <div class="access-data-row">
+                    <span>Подразделение</span>
+                    <span>{{ profile.department or '—' }}</span>
+                </div>
+                <div class="access-data-row">
+                    <span>Кабинет</span>
+                    <span>{{ profile.office_room or '—' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <button type="button" id="accessGenerateQrBtn" class="access-btn-primary">Сгенерировать QR-код</button>
+
+        <div id="accessQrBlock" class="access-qr-block">
+            <div class="access-qr-wrap">
+                <img id="accessQrImg" alt="QR-код пропуска" width="220" height="220">
+            </div>
+            <div class="access-timer-wrap">
+                <svg class="access-timer-ring" viewBox="0 0 120 120" aria-hidden="true">
+                    <circle class="ring-bg" cx="60" cy="60" r="56"></circle>
+                    <circle id="accessTimerRingProgress" class="ring-progress" cx="60" cy="60" r="56"></circle>
+                </svg>
+                <p id="accessQrTimer" class="access-timer">01:00</p>
+            </div>
+            <p class="access-qr-hint">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                Действителен для сканирования охранником
+            </p>
+            <span class="access-qr-badge">В QR нет ФИО — только защищённый токен</span>
+        </div>
+    </div>
+
+    <div class="teacher-profile-actions" style="margin-top:24px;display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <a href="{{ url_for('teacher_schedule') }}" class="btn btn-primary">Расписание</a>
+        <a href="{{ url_for('teacher_slots') }}" class="btn btn-outline">Слоты и записи</a>
+    </div>
+    {% else %}
+    <div class="access-card"><p class="hint">Профиль не найден.</p></div>
+    {% endif %}
 </div>
 
-<div class="teacher-profile-card">
-    {% if profile %}
-    <h2>Профиль</h2>
-    <p><strong>ФИО:</strong> {{ profile|fio }}</p>
-    {% if profile.pass_number %}<p><strong>№ удостоверения:</strong> {{ profile.pass_number }}</p>{% endif %}
-    {% if profile.position_title %}<p><strong>Должность:</strong> {{ profile.position_title }}</p>{% endif %}
-    {% if profile.department %}<p><strong>Подразделение:</strong> {{ profile.department }}</p>{% endif %}
-    <p><strong>Кабинет:</strong> {{ profile.office_room or '—' }}</p>
-    <p><strong>Email:</strong> {{ profile.email }}</p>
-    {% else %}
-    <p class="hint">Профиль не найден.</p>
-    {% endif %}
-    {% if qr_url %}
-    <div class="student-cabinet-qr" style="margin:1.5rem 0;">
-        <h3>QR пропуска</h3>
-        <img id="teacherQrImg" src="{{ qr_url }}" alt="QR пропуска" width="260" height="260">
-        <p class="hint">Код обновляется каждые несколько минут</p>
-    </div>
-    {% endif %}
-    <div class="teacher-profile-actions">
-        <a href="{{ url_for('teacher_slots') }}" class="btn btn-accent">Временные слоты и записи</a>
-        <a href="{{ url_for('teacher_schedule') }}" class="btn btn-outline">Создать новый слот</a>
-    </div>
-</div>
-{% if qr_url %}
-<script>
-(function () {
-    function refreshQr() {
-        fetch('/api/my-qr-token').then(function (r) { return r.json(); }).then(function (d) {
-            if (d.ok && d.qr_url) {
-                var img = document.getElementById('teacherQrImg');
-                if (img) img.src = d.qr_url;
-            }
-        }).catch(function () {});
-    }
-    setInterval(refreshQr, 4 * 60 * 1000);
-})();
-</script>
+{% if profile %}
+<script src="{{ url_for('static', filename='js/pass-card.js') }}"></script>
 {% endif %}
 {% endblock %}

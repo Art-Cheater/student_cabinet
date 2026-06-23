@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS student_profiles (
     course INTEGER,
     card_number_hash TEXT UNIQUE,
     card_number_last4 VARCHAR(8),
+    pass_number VARCHAR(64),
     face_photo_path TEXT,
     study_form VARCHAR(32),
     issue_date DATE,
@@ -149,6 +150,8 @@ CREATE TABLE IF NOT EXISTS office_slots (
     max_students INTEGER NOT NULL DEFAULT 1 CHECK (max_students > 0),
     audience_type VARCHAR(16) NOT NULL DEFAULT 'anyone'
         CHECK (audience_type IN ('one_group', 'multi_group', 'anyone')),
+    enable_queue BOOLEAN NOT NULL DEFAULT FALSE,
+    enable_submission BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -171,6 +174,43 @@ CREATE TABLE IF NOT EXISTS office_bookings (
 );
 
 CREATE INDEX IF NOT EXISTS idx_office_bookings_slot ON office_bookings(slot_id);
+
+CREATE TABLE IF NOT EXISTS office_queue_entries (
+    id SERIAL PRIMARY KEY,
+    slot_id INTEGER NOT NULL REFERENCES office_slots(id) ON DELETE CASCADE,
+    student_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL DEFAULT 0,
+    passed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (slot_id, student_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_office_queue_slot ON office_queue_entries(slot_id, position);
+
+CREATE TABLE IF NOT EXISTS office_submissions (
+    id SERIAL PRIMARY KEY,
+    slot_id INTEGER NOT NULL REFERENCES office_slots(id) ON DELETE CASCADE,
+    student_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    stored_path TEXT NOT NULL,
+    original_name TEXT NOT NULL,
+    uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_office_submissions_slot ON office_submissions(slot_id);
+
+CREATE TABLE IF NOT EXISTS teacher_personal_events (
+    id SERIAL PRIMARY KEY,
+    teacher_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    event_date DATE NOT NULL,
+    time_start TIME NOT NULL,
+    time_end TIME NOT NULL,
+    title TEXT NOT NULL,
+    color VARCHAR(16),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_teacher_personal_date
+    ON teacher_personal_events(teacher_user_id, event_date);
 
 -- Calendar notes and teacher attachments per event
 CREATE TABLE IF NOT EXISTS calendar_notes (

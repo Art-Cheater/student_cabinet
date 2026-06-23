@@ -43,7 +43,7 @@
             const lat = Number(row.dataset.lat);
             const lon = Number(row.dataset.lon);
             if (!line || !userCoords || !Number.isFinite(lat)) {
-                if (line && !userCoords) line.textContent = '—';
+                if (line && !userCoords) line.textContent = '';
                 return;
             }
             line.textContent = formatDistance(haversine(userCoords.lat, userCoords.lon, lat, lon));

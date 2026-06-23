@@ -10,6 +10,8 @@ def make_event_key(event_type, **kwargs):
         return f'lesson:{kwargs["lesson_id"]}:{kwargs["event_date"]}'
     if event_type == 'booking' and kwargs.get('booking_id'):
         return f'booking:{kwargs["booking_id"]}'
+    if event_type == 'personal' and kwargs.get('personal_id'):
+        return f'personal:{kwargs["personal_id"]}'
     if event_type == 'university_lesson' and kwargs.get('start'):
         title = kwargs.get('title', '')
         h = hashlib.md5(title.encode('utf-8')).hexdigest()[:8]
@@ -100,6 +102,7 @@ def expand_lessons_to_events(lessons, effective_from, date_from, date_to):
                 'building_number': lesson.get('building_number'),
                 'lesson_type': lesson.get('lesson_type'),
                 'lesson_id': lid,
+                'schedule_teacher_id': lesson.get('schedule_teacher_id'),
             }
             ev['event_key'] = make_event_key(
                 'lesson', lesson_id=lid, event_date=d.isoformat(),
@@ -201,6 +204,38 @@ def slot_to_event(slot):
         'slot_id': sid,
         'bookings_count': slot.get('bookings_count', 0),
         'max_students': slot['max_students'],
+        'enable_queue': bool(slot.get('enable_queue')),
+        'enable_submission': bool(slot.get('enable_submission')),
     }
     ev['event_key'] = make_event_key('office_slot', slot_id=sid, fallback_id=ev['id'])
+    return ev
+
+
+def personal_event_to_event(row):
+    start = row['time_start']
+    end = row['time_end']
+    if hasattr(start, 'isoformat'):
+        start = start.isoformat()[:5]
+    else:
+        start = str(start)[:5]
+    if hasattr(end, 'isoformat'):
+        end = end.isoformat()[:5]
+    else:
+        end = str(end)[:5]
+    sd = row['event_date']
+    if hasattr(sd, 'isoformat'):
+        sd = sd.isoformat()[:10]
+    else:
+        sd = str(sd)[:10]
+    pid = row['id']
+    ev = {
+        'id': f'personal-{pid}',
+        'title': row.get('title') or 'Заметка',
+        'start': f'{sd}T{start}:00',
+        'end': f'{sd}T{end}:00',
+        'type': 'personal',
+        'personal_id': pid,
+        'color': row.get('color'),
+    }
+    ev['event_key'] = make_event_key('personal', personal_id=pid, fallback_id=ev['id'])
     return ev

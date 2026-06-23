@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-header">
-    <h1 class="heading-brand">Карта и контакты ВятГУ</h1>
+    <h1 class="heading-brand">Карта и контакты колледжа ВятГУ</h1>
     <p>Данные с <a href="{{ buildings_source_url }}" target="_blank" rel="noopener">сайта ВятГУ</a>.
         Карта — встроенный виджет Яндекса, маршрут открывается в приложении/на сайте Яндекс.Карт (API-ключ не нужен).</p>
+    <p class="hint map-hint">Нажмите «Моё местоположение», чтобы увидеть расстояние до объектов в списке справа.</p>
 </div>
 
 <div class="map-layout">
@@ -17,7 +18,7 @@
             <button class="map-locate-btn" id="locateMeBtn" type="button">Моё местоположение</button>
         </div>
         <div class="map-canvas-wrap map-canvas-wrap--widget">
-            <iframe id="yandexMapFrame" class="yandex-map-frame" title="Карта ВятГУ"
+            <iframe id="yandexMapFrame" class="yandex-map-frame" title="Карта колледжа ВятГУ"
                 src="https://yandex.ru/map-widget/v1/?ll=49.668,58.6036&z=12&lang=ru_RU"
                 allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
         </div>
@@ -38,8 +39,8 @@
                     data-id="dorm-{{ item.number }}"
                     data-lat="{{ item.lat }}" data-lon="{{ item.lon }}">
                 <span class="map-list-row-title">{{ item.name }}</span>
-                <span class="map-list-row-meta hint">{{ item.address or '—' }}</span>
-                <span class="distance-text hint" data-distance-for="{{ item.name }}">—</span>
+                <span class="map-list-row-meta hint">{{ item.address or '—' }}{% if item.phone %} · {{ item.phone }}{% endif %}</span>
+                <span class="distance-text hint" data-distance-for="{{ item.name }}" title="Расстояние после «Моё местоположение»"></span>
             </button>
             {% endfor %}
             {% for item in buildings %}
@@ -47,8 +48,8 @@
                     data-id="building-{{ item.number }}"
                     data-lat="{{ item.lat }}" data-lon="{{ item.lon }}">
                 <span class="map-list-row-title">{{ item.name }}</span>
-                <span class="map-list-row-meta hint">{{ item.address or '—' }}</span>
-                <span class="distance-text hint" data-distance-for="{{ item.name }}">—</span>
+                <span class="map-list-row-meta hint">{{ item.address or '—' }}{% if item.phone %} · {{ item.phone }}{% endif %}</span>
+                <span class="distance-text hint" data-distance-for="{{ item.name }}" title="Расстояние после «Моё местоположение»"></span>
             </button>
             {% endfor %}
         </div>

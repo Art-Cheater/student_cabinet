@@ -10,8 +10,8 @@ def get_user_by_email(conn, email):
         SELECT u.*, r.code AS role_code, r.title AS role_title
         FROM users u
         JOIN roles r ON r.id = u.role_id
-        WHERE u.email = %s AND u.is_active = TRUE
-    ''', (email,)).fetchone()
+        WHERE LOWER(u.email) = LOWER(%s) AND u.is_active = TRUE
+    ''', ((email or '').strip(),)).fetchone()
 
 
 def get_user_by_id(conn, user_id):
@@ -108,7 +108,7 @@ def list_students_admin(conn, group_id=None, search_q=None, limit=50, offset=0):
         SELECT u.id AS user_id, u.email, u.last_name, u.first_name, u.middle_name,
                g.name AS group_name, sp.group_id, sp.student_id, sp.course,
                sp.card_number_last4, sp.study_form, sp.issue_date, sp.course_number,
-               sp.face_photo_path
+               sp.face_photo_path, sp.pass_number
         FROM users u
         JOIN roles r ON r.id = u.role_id AND r.code = 'student'
         LEFT JOIN student_profiles sp ON sp.user_id = u.id
@@ -140,6 +140,15 @@ def list_teachers_admin(conn):
         JOIN roles r ON r.id = u.role_id AND r.code = 'teacher'
         LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
         LEFT JOIN schedule_teachers st ON st.id = tp.schedule_teacher_id
+        ORDER BY u.last_name, u.first_name
+    ''').fetchall()
+
+
+def list_guards_admin(conn):
+    return conn.execute('''
+        SELECT u.id AS user_id, u.email, u.last_name, u.first_name, u.middle_name
+        FROM users u
+        JOIN roles r ON r.id = u.role_id AND r.code = 'guard'
         ORDER BY u.last_name, u.first_name
     ''').fetchall()
 
@@ -217,6 +226,18 @@ def update_teacher(conn, user_id, email, last_name, first_name, middle_name,
             pass_number = %s, department = %s
         WHERE user_id = %s
     ''', (position_title, office_room, schedule_teacher_id, pass_number, department, user_id))
+
+
+def update_student_pass_number(conn, user_id, pass_number):
+    conn.execute('''
+        UPDATE student_profiles SET pass_number = %s WHERE user_id = %s
+    ''', (pass_number or None, user_id))
+
+
+def update_teacher_pass_number(conn, user_id, pass_number):
+    conn.execute('''
+        UPDATE teacher_profiles SET pass_number = %s WHERE user_id = %s
+    ''', (pass_number or None, user_id))
 
 
 def delete_user(conn, user_id):

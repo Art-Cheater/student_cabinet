@@ -11,6 +11,7 @@
         <h3>Студенты</h3>
         <details><summary>Создать студента</summary>
         <form method="POST" enctype="multipart/form-data" style="margin:1rem 0;">
+            {% include 'partials/csrf_input.html' %}
             <input type="hidden" name="action" value="create_student">
             <div class="form-group"><label>Email *</label><input type="email" name="email" required></div>
             <div class="form-group"><label>Пароль *</label><input type="text" name="password" pattern="[A-Za-z0-9]+" required></div>
@@ -19,6 +20,7 @@
             <div class="form-group"><label>Имя *</label><input type="text" name="first_name" required></div>
             <div class="form-group"><label>Отчество</label><input type="text" name="middle_name"></div>
             <div class="form-group"><label>Номер студбилета *</label><input type="text" name="card_number" pattern="[0-9]+" required></div>
+            <div class="form-group"><label>Номер пропуска</label><input type="text" name="pass_number" maxlength="64" placeholder="Для охраны / QR"></div>
             <div class="form-group"><label>Форма обучения *</label>
                 <select name="study_form" required><option value="Очная">Очная</option><option value="Заочная">Заочная</option></select>
             </div>
@@ -66,6 +68,7 @@
                     <p class="hint">Фото не загружено</p>
                     {% endif %}
                     <form method="POST" enctype="multipart/form-data">
+                        {% include 'partials/csrf_input.html' %}
                         <input type="hidden" name="action" value="update_student">
                         <input type="hidden" name="user_id" value="{{ s.user_id }}">
                         <div class="form-group"><label>Заменить фото студбилета</label>
@@ -75,12 +78,15 @@
                         <input name="last_name" value="{{ s.last_name }}">
                         <input name="first_name" value="{{ s.first_name }}">
                         <input name="middle_name" value="{{ s.middle_name or '' }}">
+                        <div class="form-group"><label>Номер пропуска</label>
+                            <input name="pass_number" value="{{ s.pass_number or '' }}" maxlength="64"></div>
                         <input name="study_form" value="{{ s.study_form }}">
                         <input name="issue_date" type="date" value="{{ s.issue_date }}">
                         <input name="course_number" value="{{ s.course_number }}">
                         <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
                     </form>
                     <form method="POST" onsubmit="return confirm('Удалить?');">
+                        {% include 'partials/csrf_input.html' %}
                         <input type="hidden" name="action" value="delete_user">
                         <input type="hidden" name="user_id" value="{{ s.user_id }}">
                         <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
@@ -111,6 +117,7 @@
         <h3>Преподаватели</h3>
         <details><summary>Добавить преподавателя</summary>
         <form method="POST" style="margin:1rem 0;">
+            {% include 'partials/csrf_input.html' %}
             <input type="hidden" name="action" value="create_teacher">
             <div class="form-group"><label>Email *</label><input type="email" name="email" required></div>
             <div class="form-group"><label>Пароль *</label><input type="text" name="password" pattern="[A-Za-z0-9]+" required></div>
@@ -154,6 +161,7 @@
                 <td>
                     <details><summary>Изменить</summary>
                     <form method="POST" style="margin:0.5rem 0;">
+                        {% include 'partials/csrf_input.html' %}
                         <input type="hidden" name="action" value="update_teacher">
                         <input type="hidden" name="user_id" value="{{ t.user_id }}">
                         <div class="form-group"><label>Email</label><input type="email" name="email" value="{{ t.email }}" required></div>
@@ -176,6 +184,7 @@
                         <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
                     </form>
                     <form method="POST" onsubmit="return confirm('Удалить?');">
+                        {% include 'partials/csrf_input.html' %}
                         <input type="hidden" name="action" value="delete_teacher">
                         <input type="hidden" name="user_id" value="{{ t.user_id }}">
                         <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
@@ -194,6 +203,7 @@
     <div class="admin-tab-panel {% if tab == 'schedule' %}active{% endif %}">
         <h3>Загрузка расписания</h3>
         <form method="POST" enctype="multipart/form-data">
+            {% include 'partials/csrf_input.html' %}
             <input type="hidden" name="action" value="upload_schedule">
             <div class="form-group"><label>Excel (.xlsx)</label>
                 <input type="file" name="schedule_file" accept=".xlsx" required></div>
@@ -204,40 +214,51 @@
         {% if parser_output %}<pre class="hint">{{ parser_output }}</pre>{% endif %}
         {% if uploaded_filename %}<p>Файл: {{ uploaded_filename }}</p>{% endif %}
         <p class="hint">Автозагрузка из VK: <code>python parsers/vk_schedule_sync.py</code></p>
+        <form method="POST" action="{{ url_for('admin_sync_campus') }}" style="margin-top:1.5rem;">
+            {% include 'partials/csrf_input.html' %}
+            <input type="hidden" name="action" value="sync_campus">
+            <button type="submit" class="btn btn-outline">Обновить корпуса и общежития с сайта</button>
+        </form>
     </div>
 
-    <div class="admin-tab-panel {% if tab == 'help' %}active{% endif %}">
-        <h3>VK-токен для новостей и расписания</h3>
-        {% if vk_token_masked %}<p class="hint">Сохранённый токен: <code>{{ vk_token_masked }}</code></p>{% endif %}
+    <div class="admin-tab-panel {% if tab == 'guards' %}active{% endif %}">
+        <h3>Охрана</h3>
+        <details><summary>Добавить охранника</summary>
         <form method="POST" style="margin:1rem 0; max-width:480px;">
-            <input type="hidden" name="action" value="save_vk_token">
-            <div class="form-group">
-                <label>VK Access Token</label>
-                <input type="password" name="vk_access_token" placeholder="vk1.a...." autocomplete="off">
-                <p class="hint">Пустое поле — удалить токен из БД. Можно также задать <code>VK_ACCESS_TOKEN</code> в .env.</p>
-            </div>
-            <button type="submit" class="btn btn-primary">Сохранить токен</button>
-        </form>
-        <ol>
-            <li>Управление сообществом → <strong>Работа с API</strong> → <strong>Создать ключ</strong></li>
-            <li>Права: стена, документы (для Excel расписания)</li>
-        </ol>
-        <p>Документация: <a href="https://dev.vk.com/api/access-token/community-token" target="_blank" rel="noopener">ключ доступа сообщества</a></p>
-        <h3 style="margin-top:2rem;">Охранник</h3>
-        <form method="POST" style="margin:1rem 0; max-width:480px;">
+            {% include 'partials/csrf_input.html' %}
             <input type="hidden" name="action" value="create_guard">
             <div class="form-group"><label>Email *</label><input type="email" name="email" required></div>
             <div class="form-group"><label>Пароль *</label><input type="text" name="password" pattern="[A-Za-z0-9]+" required></div>
             <div class="form-group"><label>Фамилия *</label><input type="text" name="last_name" required></div>
             <div class="form-group"><label>Имя *</label><input type="text" name="first_name" required></div>
             <div class="form-group"><label>Отчество</label><input type="text" name="middle_name"></div>
-            <button type="submit" class="btn btn-primary">Создать охранника</button>
-        </form>
-        <p>Корпуса в БД:</p>
-        <form method="POST" action="{{ url_for('admin_sync_campus') }}">
-            <input type="hidden" name="action" value="sync_campus">
-            <button type="submit" class="btn btn-primary">Обновить корпуса и общежития с сайта</button>
-        </form>
+            <button type="submit" class="btn btn-primary">Создать</button>
+        </form></details>
+
+        <div class="table-scroll">
+        <table class="bookings-list" style="width:100%; margin-top:1rem;">
+            <thead><tr><th>Email</th><th>ФИО</th><th></th></tr></thead>
+            <tbody>
+            {% for g in guards %}
+            <tr>
+                <td>{{ g.email }}</td>
+                <td>{{ g|fio }}</td>
+                <td>
+                    <form method="POST" onsubmit="return confirm('Удалить?');">
+                        {% include 'partials/csrf_input.html' %}
+                        <input type="hidden" name="action" value="delete_user">
+                        <input type="hidden" name="return_tab" value="guards">
+                        <input type="hidden" name="user_id" value="{{ g.user_id }}">
+                        <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3">Нет учётных записей охраны</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
     </div>
 </div>
 <script src="{{ url_for('static', filename='js/room-mask.js') }}"></script>
